@@ -39,7 +39,8 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'apps.core',
     'apps.accounts',
-    'apps.ustalar'
+    'apps.ustalar',
+    'apps.arizalar',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

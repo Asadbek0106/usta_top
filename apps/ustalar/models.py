@@ -3,6 +3,8 @@ from django.db import models
 
 from apps.core.models import TimeStampedModel
 
+from django.db.models import Avg, Count
+
 
 class Shahar(models.Model):
     nomi = models.CharField(max_length=100, unique=True)
@@ -33,6 +35,12 @@ class Kategoriya(models.Model):
 class UstaQuerySet(models.QuerySet):
     def faol(self):
         return self.filter(tasdiqlangan=True, user__is_active=True)
+
+    def reyting_bilan(self):
+        return self.annotate(
+            reyting=Avg('arizalar__sharh__baho'),
+            sharhlar_soni=Count('arizalar__sharh', distinct=True),
+        )
 
 
 class Usta(TimeStampedModel):
