@@ -41,7 +41,7 @@ class UstaQuerySet(models.QuerySet):
     def reyting_bilan(self):
         return self.annotate(
             reyting=Round(Avg('arizalar__sharh__baho'), 1),
-            sharhlar_soni=Count('arizalar__sharh ', distinct=True),
+            sharhlar_soni=Count('arizalar__sharh', distinct=True),
         )
 
 

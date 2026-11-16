@@ -51,5 +51,5 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'telefon', 'first_name', 'last_name', 'email', 'usta_mi', 'date_joined')
         read_only_fields = ('telefon', 'date_joined')
 
-    def get_usta_mi(self, obj):
+    def get_usta_mi(self, obj) -> bool:
         return hasattr(obj, 'usta_profil')
