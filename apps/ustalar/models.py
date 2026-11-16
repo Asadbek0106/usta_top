@@ -5,6 +5,8 @@ from apps.core.models import TimeStampedModel
 
 from django.db.models import Avg, Count
 
+from django.db.models.functions import Round
+
 
 class Shahar(models.Model):
     nomi = models.CharField(max_length=100, unique=True)
@@ -38,8 +40,8 @@ class UstaQuerySet(models.QuerySet):
 
     def reyting_bilan(self):
         return self.annotate(
-            reyting=Avg('arizalar__sharh__baho'),
-            sharhlar_soni=Count('arizalar__sharh', distinct=True),
+            reyting=Round(Avg('arizalar__sharh__baho'), 1),
+            sharhlar_soni=Count('arizalar__sharh ', distinct=True),
         )
 
 
