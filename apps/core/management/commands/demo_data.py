@@ -1,7 +1,8 @@
 import random
 from decimal import Decimal
 
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.accounts.models import User
@@ -26,8 +27,13 @@ class Command(BaseCommand):
         user = User.objects.filter(telefon=telefon).first()
         return user or User.objects.create_user(telefon, PAROL, first_name=ism)
 
-    @transaction.atomic
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            raise CommandError("demo_data faqat DEBUG=True rejimida ishlaydi (production'da ishlatilmaydi).")
+        self.yarat()
+
+    @transaction.atomic
+    def yarat(self):
         random.seed(42)
 
         shaharlar = [Shahar.objects.get_or_create(nomi=nomi)[0] for nomi in SHAHARLAR]

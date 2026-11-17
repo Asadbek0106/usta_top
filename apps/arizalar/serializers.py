@@ -48,3 +48,26 @@ class ArizaCreateSerializer(serializers.ModelSerializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError(serializers.as_serializer_error(e))
         return attrs
+
+
+class ArizaUpdateSerializer(serializers.ModelSerializer):
+    """Mijoz arizani faqat "yangi" holatida tahrirlay oladi.
+    status, usta va kelishilgan_narx ataylab kiritilmagan: ular faqat action'lar orqali o'zgaradi."""
+
+    class Meta:
+        model = Ariza
+        fields = ('tavsif', 'manzil')
+
+    def validate(self, attrs):
+        if self.instance.status != Ariza.Status.YANGI:
+            raise serializers.ValidationError("Faqat yangi arizani tahrirlash mumkin.")
+        return attrs
+
+
+class QabulSerializer(serializers.Serializer):
+    kelishilgan_narx = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=0,
+        required=False,
+    )

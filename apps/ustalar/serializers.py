@@ -30,6 +30,23 @@ class XizmatSerializer(serializers.ModelSerializer):
         extra_kwargs = {'narx_dan': {'min_value': 0}}
 
 
+class XizmatimSerializer(XizmatSerializer):
+    """Usta o'z xizmatlarini boshqarishi uchun (/xizmatlarim/)."""
+
+    def validate(self, attrs):
+        usta = self.context['request'].user.usta_profil
+        kategoriya = attrs.get('kategoriya')
+        if kategoriya is not None:
+            takror = usta.xizmatlar.filter(kategoriya=kategoriya)
+            if self.instance is not None:
+                takror = takror.exclude(pk=self.instance.pk)
+            if takror.exists():
+                raise serializers.ValidationError(
+                    {'kategoriya_id': "Bu kategoriyada sizda allaqachon xizmat bor."}
+                )
+        return attrs
+
+
 class UstaListSerializer(serializers.ModelSerializer):
     ism = serializers.CharField(source='user.get_full_name', read_only=True)
     shahar = serializers.StringRelatedField()
@@ -79,3 +96,10 @@ class UstaCreateSerializer(serializers.ModelSerializer):
         usta = Usta.objects.create(user=self.context['request'].user, **validated_data)
         Xizmat.objects.bulk_create([Xizmat(usta=usta, **x) for x in xizmatlar])
         return usta
+
+class UstaUpdateSerializer(serializers.ModelSerializer):
+    """Usta o'z profilini tahrirlashi uchun. `tasdiqlangan` ataylab kiritilmagan."""
+
+    class Meta:
+        model = Usta
+        fields = ('shahar', 'tavsif')

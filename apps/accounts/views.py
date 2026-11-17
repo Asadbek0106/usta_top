@@ -6,7 +6,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 
 
 def tokenlar(user):
@@ -48,6 +48,7 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LoginView(TokenObtainPairView):
+    serializer_class = LoginSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'auth'
 

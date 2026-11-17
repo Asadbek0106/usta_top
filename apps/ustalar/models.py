@@ -1,11 +1,9 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Avg, Count
+from django.db.models.functions import Round
 
 from apps.core.models import TimeStampedModel
-
-from django.db.models import Avg, Count
-
-from django.db.models.functions import Round
 
 
 class Shahar(models.Model):

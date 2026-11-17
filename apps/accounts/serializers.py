@@ -1,6 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.validators import UniqueValidator
 
 from .models import User, telefon_validator
@@ -53,3 +54,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_usta_mi(self, obj) -> bool:
         return hasattr(obj, 'usta_profil')
+
+
+class LoginSerializer(TokenObtainPairSerializer):
+    """Kirishda ham telefon ro'yxatdan o'tishdagi kabi tozalanadi."""
+
+    def validate(self, attrs):
+        attrs[self.username_field] = User.objects.normalize_telefon(attrs[self.username_field])
+        return super().validate(attrs)
