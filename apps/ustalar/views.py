@@ -1,13 +1,17 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from apps.arizalar.models import Sharh
 from apps.arizalar.serializers import SharhSerializer
 from apps.core.exceptions import BiznesXatosi
+from apps.core.filters import NullsLastOrderingFilter
 
+from .filters import UstaFilter
 from .models import Kategoriya, Shahar, Usta, Xizmat
 from .permissions import IsUsta
 from .serializers import (
@@ -25,12 +29,14 @@ class ShaharViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Shahar.objects.all()
     serializer_class = ShaharSerializer
     permission_classes = [AllowAny]
+    pagination_class = None  # ma'lumotnoma kichik, hammasi birdaniga qaytadi
 
 
 class KategoriyaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Kategoriya.objects.filter(faol=True)
     serializer_class = KategoriyaSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
 
 class UstaViewSet(
@@ -40,6 +46,11 @@ class UstaViewSet(
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, NullsLastOrderingFilter]
+    filterset_class = UstaFilter
+    search_fields = ['user__first_name', 'user__last_name', 'tavsif']
+    ordering_fields = ['reyting', 'sharhlar_soni', 'yaratilgan']
+    ordering = ['-reyting']
 
     def get_queryset(self):
         qs = Usta.objects.faol().reyting_bilan().select_related('user', 'shahar')
@@ -54,12 +65,13 @@ class UstaViewSet(
             return UstaDetailSerializer
         return UstaListSerializer
 
-    @extend_schema(responses=SharhSerializer(many=True))
+    @extend_schema(responses=SharhSerializer(many=True), filters=False)
     @action(detail=True, methods=['get'])
     def sharhlar(self, request, pk=None):
         usta = self.get_object()
-        sharhlar = Sharh.objects.filter(ariza__usta=usta)
-        return Response(SharhSerializer(sharhlar, many=True).data)
+        sharhlar = Sharh.objects.filter(ariza__usta=usta).order_by('-yaratilgan')
+        sahifa = self.paginate_queryset(sharhlar)
+        return self.get_paginated_response(SharhSerializer(sahifa, many=True).data)
 
     @extend_schema(methods=['GET'], responses=UstaDetailSerializer)
     @extend_schema(methods=['PATCH'], request=UstaUpdateSerializer, responses=UstaDetailSerializer)
@@ -86,6 +98,7 @@ class XizmatimViewSet(viewsets.ModelViewSet):
 
     serializer_class = XizmatimSerializer
     permission_classes = [IsAuthenticated, IsUsta]
+    pagination_class = None  # ustaning xizmatlari soni kategoriyalar sonidan oshmaydi
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):

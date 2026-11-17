@@ -12,16 +12,16 @@ class UstaRoyxatiTest(BaseAPITestCase):
     def test_mehmon_ustalarni_kora_oladi(self):
         javob = self.client.get(USTALAR)
         self.assertEqual(javob.status_code, 200)
-        self.assertEqual(len(javob.data), 2)
+        self.assertEqual(javob.data['count'], 2)
 
     def test_tasdiqlanmagan_usta_korinmaydi(self):
         usta_yarat('+998900000009', shahar=self.shahar, kategoriyalar=[self.santexnik], tasdiqlangan=False)
-        self.assertEqual(len(self.client.get(USTALAR).data), 2)
+        self.assertEqual(self.client.get(USTALAR).data['count'], 2)
 
     def test_bloklangan_usta_korinmaydi(self):
         self.begona_usta.user.is_active = False
         self.begona_usta.user.save()
-        self.assertEqual(len(self.client.get(USTALAR).data), 1)
+        self.assertEqual(self.client.get(USTALAR).data['count'], 1)
 
     def test_batafsil_sahifada_xizmatlar_va_reyting(self):
         ariza = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik,
@@ -51,8 +51,8 @@ class UstaRoyxatiTest(BaseAPITestCase):
         Sharh.objects.create(ariza=ariza, baho=5, matn='Zo‘r')
         javob = self.client.get(f'{USTALAR}{self.usta.pk}/sharhlar/')
         self.assertEqual(javob.status_code, 200)
-        self.assertEqual(len(javob.data), 1)
-        self.assertEqual(self.client.get(f'{USTALAR}{self.begona_usta.pk}/sharhlar/').data, [])
+        self.assertEqual(javob.data['count'], 1)
+        self.assertEqual(self.client.get(f'{USTALAR}{self.begona_usta.pk}/sharhlar/').data['results'], [])
 
     def test_faqat_faol_kategoriyalar(self):
         Kategoriya.objects.create(nomi='Eski', slug='eski', faol=False)
@@ -182,3 +182,92 @@ class XizmatlarimTest(BaseAPITestCase):
     def test_usta_bolmagan_foydalanuvchi(self):
         self.kirish(foydalanuvchi_yarat('+998930000000'))
         self.assertEqual(self.client.get(XIZMATLARIM).status_code, 403)
+
+
+class UstaFiltrVaTartibTest(BaseAPITestCase):
+    """9-etap: filtr, qidiruv, tartiblash, sahifalash va so'rovlar soni."""
+
+    def setUp(self):
+        super().setUp()
+        # self.usta va self.begona_usta: Toshkent, santexnik 100 000 so'mdan
+        self.elektrik_usta = usta_yarat(
+            '+998900000003', shahar=self.shahar2, kategoriyalar=[self.elektrik], narx=300000,
+        )
+        Xizmat.objects.create(usta=self.elektrik_usta, kategoriya=self.santexnik, narx_dan=500000)
+
+    def idlar(self, javob):
+        self.assertEqual(javob.status_code, 200, javob.data)
+        return [u['id'] for u in javob.data['results']]
+
+    def sharh_qoldir(self, usta, baho):
+        ariza = ariza_yarat(mijoz=self.mijoz, usta=usta, kategoriya=usta.kategoriyalar.first(),
+                            status=Ariza.Status.BAJARILDI)
+        Sharh.objects.create(ariza=ariza, baho=baho)
+
+    def test_shahar_boyicha(self):
+        javob = self.client.get(USTALAR, {'shahar': self.shahar2.pk})
+        self.assertEqual(self.idlar(javob), [self.elektrik_usta.pk])
+
+    def test_kategoriya_boyicha(self):
+        self.assertEqual(self.idlar(self.client.get(USTALAR, {'kategoriya': 'elektrik'})), [self.elektrik_usta.pk])
+        self.assertEqual(len(self.idlar(self.client.get(USTALAR, {'kategoriya': 'santexnik'}))), 3)
+
+    def test_narx_boyicha(self):
+        idlar = self.idlar(self.client.get(USTALAR, {'narx_max': 150000}))
+        self.assertCountEqual(idlar, [self.usta.pk, self.begona_usta.pk])
+
+    def test_kategoriya_va_narx_bitta_xizmatga_tegishli(self):
+        # elektrik_usta: elektrik 300 000 (arzon), santexnik 500 000 (qimmat).
+        # "350 000 gacha santexnik" so'ralganda u chiqmasligi kerak.
+        idlar = self.idlar(self.client.get(USTALAR, {'kategoriya': 'santexnik', 'narx_max': 350000}))
+        self.assertCountEqual(idlar, [self.usta.pk, self.begona_usta.pk])
+
+    def test_minimal_reyting(self):
+        self.sharh_qoldir(self.usta, 5)
+        self.sharh_qoldir(self.begona_usta, 3)
+        self.assertEqual(self.idlar(self.client.get(USTALAR, {'reyting_min': 4})), [self.usta.pk])
+
+    def test_notogri_filtr_qiymati_400(self):
+        self.assertEqual(self.client.get(USTALAR, {'reyting_min': 'abc'}).status_code, 400)
+
+    def test_qidiruv(self):
+        self.usta.user.first_name = 'Alisher'
+        self.usta.user.save()
+        self.assertEqual(self.idlar(self.client.get(USTALAR, {'search': 'alish'})), [self.usta.pk])
+
+    def test_sukut_boyicha_reyting_kamayishi_va_reytingsizlar_oxirida(self):
+        self.sharh_qoldir(self.usta, 5)
+        self.sharh_qoldir(self.begona_usta, 3)
+        self.assertEqual(
+            self.idlar(self.client.get(USTALAR)),
+            [self.usta.pk, self.begona_usta.pk, self.elektrik_usta.pk],
+        )
+
+    def test_osish_tartibida_ham_reytingsizlar_oxirida(self):
+        self.sharh_qoldir(self.usta, 5)
+        self.sharh_qoldir(self.begona_usta, 3)
+        self.assertEqual(
+            self.idlar(self.client.get(USTALAR, {'ordering': 'reyting'})),
+            [self.begona_usta.pk, self.usta.pk, self.elektrik_usta.pk],
+        )
+
+    def test_sahifalash(self):
+        javob = self.client.get(USTALAR, {'page_size': 2})
+        self.assertEqual(javob.data['count'], 3)
+        self.assertEqual(len(javob.data['results']), 2)
+        self.assertIsNotNone(javob.data['next'])
+
+        ikkinchi = self.client.get(USTALAR, {'page_size': 2, 'page': 2})
+        self.assertEqual(len(ikkinchi.data['results']), 1)
+        self.assertIsNone(ikkinchi.data['next'])
+
+    def test_mavjud_bolmagan_sahifa_404(self):
+        self.assertEqual(self.client.get(USTALAR, {'page': 99}).status_code, 404)
+
+    def test_royxat_sorovlar_soni_ustalar_soniga_bogliq_emas(self):
+        # N+1 muammosidan himoya: 3 ta usta bo'lsa ham, 13 ta bo'lsa ham so'rovlar soni bir xil.
+        for i in range(10):
+            usta_yarat(f'+99890100{i:04d}', shahar=self.shahar, kategoriyalar=[self.santexnik, self.elektrik])
+        with self.assertNumQueries(3):  # COUNT + ustalar (JOIN) + kategoriyalar (prefetch)
+            javob = self.client.get(USTALAR)
+        self.assertEqual(javob.data['count'], 13)

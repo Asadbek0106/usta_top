@@ -1,11 +1,14 @@
 from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from . import services
+from .filters import ArizaFilter
 from .models import Ariza
 from .permissions import IsArizaMijozi, IsArizaUstasi
 from .serializers import (
@@ -26,6 +29,10 @@ class ArizaViewSet(
 ):
     permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'patch']  # PUT va DELETE yo'q
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_class = ArizaFilter
+    ordering_fields = ['yaratilgan', 'yangilangan']
+    ordering = ['-yaratilgan']
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

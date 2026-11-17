@@ -50,13 +50,13 @@ class ArizaKorishTest(BaseAPITestCase):
     def test_mijoz_va_usta_koradi(self):
         for user in (self.mijoz, self.usta.user):
             self.kirish(user)
-            self.assertEqual(len(self.client.get(ARIZALAR).data), 1)
+            self.assertEqual(self.client.get(ARIZALAR).data['count'], 1)
             self.assertEqual(self.client.get(f'{ARIZALAR}{self.ariza.pk}/').status_code, 200)
 
     def test_begonalar_kormaydi(self):
         for user in (self.begona_mijoz, self.begona_usta.user):
             self.kirish(user)
-            self.assertEqual(len(self.client.get(ARIZALAR).data), 0)
+            self.assertEqual(self.client.get(ARIZALAR).data['count'], 0)
             self.assertEqual(self.client.get(f'{ARIZALAR}{self.ariza.pk}/').status_code, 404)
 
 
@@ -192,3 +192,42 @@ class SharhTest(BaseAPITestCase):
         for baho in (0, 6, 9):
             self.assertEqual(self.client.post(self.url, {'baho': baho}, format='json').status_code, 400)
         self.assertEqual(Sharh.objects.count(), 0)
+
+
+class ArizaFiltrTest(BaseAPITestCase):
+    """9-etap: arizalarni rol va status bo'yicha filtrlash."""
+
+    def setUp(self):
+        super().setUp()
+        # self.usta.user bir vaqtning o'zida ham usta (unga ariza kelgan), ham mijoz (o'zi ariza yuborgan)
+        self.kelgan = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
+        self.yuborgan = ariza_yarat(mijoz=self.usta.user, usta=self.begona_usta, kategoriya=self.santexnik,
+                                    status=Ariza.Status.BAJARILDI)
+        self.kirish(self.usta.user)
+
+    def idlar(self, **params):
+        javob = self.client.get(ARIZALAR, params)
+        self.assertEqual(javob.status_code, 200, javob.data)
+        return [a['id'] for a in javob.data['results']]
+
+    def test_hammasi(self):
+        self.assertCountEqual(self.idlar(), [self.kelgan.pk, self.yuborgan.pk])
+
+    def test_rol_boyicha(self):
+        self.assertEqual(self.idlar(rol='usta'), [self.kelgan.pk])
+        self.assertEqual(self.idlar(rol='mijoz'), [self.yuborgan.pk])
+
+    def test_status_boyicha(self):
+        self.assertEqual(self.idlar(status='bajarildi'), [self.yuborgan.pk])
+
+    def test_notogri_rol_400(self):
+        self.assertEqual(self.client.get(ARIZALAR, {'rol': 'admin'}).status_code, 400)
+
+    def test_sukut_boyicha_eng_yangisi_birinchi(self):
+        self.assertEqual(self.idlar(), [self.yuborgan.pk, self.kelgan.pk])
+
+    def test_royxat_sorovlar_soni(self):
+        for _ in range(10):
+            ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
+        with self.assertNumQueries(2):  # COUNT + arizalar (barcha bog'lanishlar JOIN orqali)
+            self.client.get(ARIZALAR)
