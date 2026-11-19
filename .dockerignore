@@ -1,0 +1,27 @@
+# Git va muharrirlar
+.git
+.gitignore
+.idea
+.vscode
+
+# Virtual muhit va Python keshi
+.venv
+__pycache__
+*.pyc
+
+
+.env
+db.sqlite3
+media
+
+
+staticfiles
+schema.yml
+.coverage
+htmlcov
+.pytest_cache
+
+
+Dockerfile
+.dockerignore
+docker-compose*.yml
