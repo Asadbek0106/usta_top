@@ -171,3 +171,37 @@ himoya ham bor: ro'yxatdagi yozuvlar soni oshsa ham SQL so'rovlar soni o'zgarmas
 - Mijoz so'rovda boshqa `mijoz` yuborsa ham e'tiborga olinmaydi (`HiddenField` + `CurrentUserDefault`).
 - Holat o'zgarishlari `select_for_update` bilan qulflanadi (race condition'dan himoya).
 - `prod.py`: `DEBUG=False`, HTTPS redirect, xavfsiz cookie'lar, HSTS.
+
+## Docker bilan ishga tushirish
+
+Kerak: Docker Desktop.
+
+```powershell
+docker compose up --build
+```
+
+Bu buyruq ikkita servisni ko'taradi:
+
+| Servis | Nima | Port |
+|---|---|---|
+| `db` | PostgreSQL 17, ma'lumotlar `postgres_data` volume'ida saqlanadi | 5432 |
+| `web` | Django + gunicorn (3 worker), ishga tushganda migratsiyalarni o'zi qo'llaydi | 8000 |
+
+`web` faqat baza tayyor bo'lgandan keyin ishga tushadi (`healthcheck` + `depends_on`).
+
+Sinov ma'lumotlari va admin:
+
+```powershell
+docker compose exec -e DJANGO_SETTINGS_MODULE=config.settings.dev -e DEBUG=True web python manage.py demo_data
+docker compose exec web python manage.py createsuperuser
+```
+
+Foydali buyruqlar:
+
+| Buyruq | Vazifasi |
+|---|---|
+| `docker compose ps` | Servislar holati (`healthy` bo'lishi kerak) |
+| `docker compose logs -f web` | Django loglari |
+| `docker compose down` | To'xtatish (ma'lumotlar saqlanadi) |
+| `docker compose down -v` | To'xtatish va bazani butunlay tozalash |
+
