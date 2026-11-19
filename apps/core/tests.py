@@ -1,11 +1,14 @@
-from io import StringIO
-
-from django.core.management import CommandError, call_command
-from django.test import TestCase, override_settings
 
 from apps.accounts.models import User
 from apps.arizalar.models import Ariza, Sharh
 from apps.ustalar.models import Usta
+
+from io import StringIO
+from unittest.mock import patch
+
+from django.core.management import CommandError, call_command
+from django.db.utils import OperationalError
+from django.test import TestCase, override_settings
 
 
 class DemoDataTest(TestCase):
@@ -31,3 +34,14 @@ class DemoDataTest(TestCase):
         with self.assertRaises(CommandError):
             call_command('demo_data', stdout=StringIO())
         self.assertEqual(User.objects.count(), 0)
+
+class HealthTest(TestCase):
+    def test_hammasi_joyida(self):
+        javob = self.client.get('/health/')
+        self.assertEqual(javob.status_code, 200)
+        self.assertEqual(javob.json(), {'status': 'ok', 'database': 'ok'})
+
+    def test_baza_ishlamasa_503(self):
+        with patch('apps.core.views.connection.cursor', side_effect=OperationalError):
+            javob = self.client.get('/health/')
+        self.assertEqual(javob.status_code, 503)
