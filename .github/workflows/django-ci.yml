@@ -125,8 +125,10 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Smoke test (container ishga tushadimi, /health/ javob beradimi)
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          IMAGE=$(echo "$TAGS" | head -n1)
           docker run -d --name smoke -p 8000:8000 \
             -e SECRET_KEY=smoke-test-uchun-vaqtinchalik-kalit-0123456789 \
             -e HTTPS=False \
@@ -149,7 +151,9 @@ jobs:
 
       - name: Image'ni yuklash (faqat master'ga push bo'lganda)
         if: github.event_name == 'push'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          for tag in ${{ steps.meta.outputs.tags }}; do
-            docker push "$tag"
+          echo "$TAGS" | while read -r tag; do
+            [ -n "$tag" ] && docker push "$tag"
           done
