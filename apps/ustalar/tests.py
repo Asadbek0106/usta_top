@@ -1,5 +1,10 @@
 from apps.arizalar.models import Ariza, Sharh
-from apps.core.testing import BaseAPITestCase, ariza_yarat, foydalanuvchi_yarat, usta_yarat
+from apps.core.testing import (
+    BaseAPITestCase,
+    ariza_yarat,
+    foydalanuvchi_yarat,
+    usta_yarat,
+)
 
 from .models import Kategoriya, Usta, Xizmat
 

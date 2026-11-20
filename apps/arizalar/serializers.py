@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from apps.ustalar.models import Usta
+from apps.ustalar.models import Kategoriya, Usta
 
 from .models import Ariza, Sharh
 
@@ -37,6 +37,7 @@ class ArizaSerializer(serializers.ModelSerializer):
 class ArizaCreateSerializer(serializers.ModelSerializer):
     mijoz = serializers.HiddenField(default=serializers.CurrentUserDefault())
     usta = serializers.PrimaryKeyRelatedField(queryset=Usta.objects.faol())
+    kategoriya = serializers.PrimaryKeyRelatedField(queryset=Kategoriya.objects.filter(faol=True))
 
     class Meta:
         model = Ariza
@@ -46,7 +47,7 @@ class ArizaCreateSerializer(serializers.ModelSerializer):
         try:
             Ariza(**attrs).clean()
         except DjangoValidationError as e:
-            raise serializers.ValidationError(serializers.as_serializer_error(e))
+            raise serializers.ValidationError(serializers.as_serializer_error(e)) from e
         return attrs
 
 

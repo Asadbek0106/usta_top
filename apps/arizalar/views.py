@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from . import services
 from .filters import ArizaFilter
@@ -43,6 +44,13 @@ class ArizaViewSet(
             .filter(Q(mijoz=user) | Q(usta__user=user))
             .select_related('mijoz', 'usta__user', 'kategoriya', 'sharh')
         )
+
+    def get_throttles(self):
+        # Spamdan himoya: yangi ariza yuborish alohida, qattiqroq cheklangan
+        if self.action == 'create':
+            self.throttle_scope = 'ariza'
+            return [*super().get_throttles(), ScopedRateThrottle()]
+        return super().get_throttles()
 
     def get_permissions(self):
         if self.action == 'partial_update':

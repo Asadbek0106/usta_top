@@ -27,6 +27,7 @@ THIRD_PARTY_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'django_filters',
+
 ]
 
 LOCAL_APPS = [
@@ -106,8 +107,16 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.core.pagination.StandardPagination',
+    # Umumiy cheklov: bitta IP (anonim) yoki bitta foydalanuvchi daqiqasiga shuncha so'rov yubora oladi
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
     'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',
+        'user': '300/minute',
         'auth': '5/minute',
+        'ariza': '20/hour',
     },
 }
 

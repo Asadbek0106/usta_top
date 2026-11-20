@@ -231,3 +231,26 @@ class ArizaFiltrTest(BaseAPITestCase):
             ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
         with self.assertNumQueries(2):  # COUNT + arizalar (barcha bog'lanishlar JOIN orqali)
             self.client.get(ARIZALAR)
+
+
+class ArizaQoshimchaHimoyaTest(BaseAPITestCase):
+    """Nofaol kategoriya va spamdan himoya."""
+
+    def malumot(self):
+        return {'usta': self.usta.pk, 'kategoriya': self.santexnik.pk, 'tavsif': 'Kran', 'manzil': 'Chilonzor'}
+
+    def test_nofaol_kategoriyaga_ariza_berib_bolmaydi(self):
+        self.santexnik.faol = False
+        self.santexnik.save()
+        self.kirish(self.mijoz)
+        javob = self.client.post(ARIZALAR, self.malumot(), format='json')
+        self.assertEqual(javob.status_code, 400)
+        self.assertIn('kategoriya', javob.data)
+
+    def test_soatiga_20_tadan_ortiq_ariza_yuborib_bolmaydi(self):
+        self.kirish(self.mijoz)
+        for _ in range(20):
+            self.assertEqual(self.client.post(ARIZALAR, self.malumot(), format='json').status_code, 201)
+        self.assertEqual(self.client.post(ARIZALAR, self.malumot(), format='json').status_code, 429)
+        # Cheklov faqat yaratishga tegishli: ro'yxatni ko'rish ishlayveradi
+        self.assertEqual(self.client.get(ARIZALAR).status_code, 200)

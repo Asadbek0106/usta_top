@@ -1,14 +1,13 @@
-
-from apps.accounts.models import User
-from apps.arizalar.models import Ariza, Sharh
-from apps.ustalar.models import Usta
-
 from io import StringIO
 from unittest.mock import patch
 
 from django.core.management import CommandError, call_command
 from django.db.utils import OperationalError
 from django.test import TestCase, override_settings
+
+from apps.accounts.models import User
+from apps.arizalar.models import Ariza, Sharh
+from apps.ustalar.models import Usta
 
 
 class DemoDataTest(TestCase):

@@ -6,7 +6,6 @@ from django.db import models
 from apps.core.models import TimeStampedModel
 
 
-
 class Ariza(TimeStampedModel):
     class Status(models.TextChoices):
         YANGI = 'yangi', 'Yangi'

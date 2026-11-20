@@ -24,6 +24,8 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Docker'da lokal sinov uchun HTTPS=False qilinadi, haqiqiy serverda True qoladi.
 HTTPS = env.bool('HTTPS', default=True)
 SECURE_SSL_REDIRECT = HTTPS
+# Docker healthcheck container ichidan oddiy HTTP orqali so'raydi, uni HTTPS'ga yo'naltirmaymiz
+SECURE_REDIRECT_EXEMPT = [r'^health/$']
 SESSION_COOKIE_SECURE = HTTPS
 CSRF_COOKIE_SECURE = HTTPS
 SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30 if HTTPS else 0

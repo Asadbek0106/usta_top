@@ -7,7 +7,9 @@ from .models import Usta, Xizmat
 class UstaFilter(django_filters.FilterSet):
     shahar = django_filters.NumberFilter(field_name='shahar_id', label="Shahar ID")
     kategoriya = django_filters.CharFilter(method='filter_xizmat', label="Kategoriya slug'i (masalan: santexnik)")
-    narx_max = django_filters.NumberFilter(method='filter_xizmat', label="Eng ko'pi bilan shu narxdan boshlanadigan xizmat")
+    narx_max = django_filters.NumberFilter(
+        method='filter_xizmat', label="Eng ko'pi bilan shu narxdan boshlanadigan xizmat",
+    )
     reyting_min = django_filters.NumberFilter(field_name='reyting', lookup_expr='gte', label="Minimal reyting")
 
     class Meta:

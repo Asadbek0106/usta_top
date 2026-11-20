@@ -1,3 +1,1 @@
-from django.contrib import admin
-
-# Register your models here.
+# core app'da admin panelga qo'shiladigan model yo'q: TimeStampedModel abstract.

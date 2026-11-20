@@ -1,5 +1,11 @@
 """Testlar uchun sozlamalar: tez va tashqi muhitga bog'liq emas."""
-from .base import *  # noqa
+import os
+
+# CI serverida (GitHub Actions va h.k.) .env fayli bo'lmaydi. base.py esa SECRET_KEY'ni majburiy talab qiladi,
+# shuning uchun testlar uchun vaqtinchalik kalit beriladi (SECRET_KEY muhitda berilgan bo'lsa, o'shasi olinadi).
+os.environ.setdefault('SECRET_KEY', 'faqat-testlar-uchun-maxfiy-kalit-0123456789abcdef')
+
+from .base import *  # noqa: E402,F403
 
 DEBUG = False
 

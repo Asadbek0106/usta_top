@@ -1,0 +1,8 @@
+# Linter sozlamalari: `ruff check .` (CI'da ham shu buyruq ishlatiladi)
+line-length = 120
+target-version = "py314"
+extend-exclude = ["*/migrations/*"]
+
+[lint]
+# E/W: PEP 8, F: xatolar (ishlatilmagan import, aniqlanmagan nom), I: importlar tartibi, B: keng tarqalgan buglar
+select = ["E", "W", "F", "I", "B"]

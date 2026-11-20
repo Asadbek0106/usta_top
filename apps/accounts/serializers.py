@@ -1,8 +1,8 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User, telefon_validator
 
@@ -36,7 +36,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         try:
             validate_password(attrs['password'], user=User(telefon=attrs['telefon']))
         except DjangoValidationError as e:
-            raise serializers.ValidationError({'password': list(e.messages)})
+            raise serializers.ValidationError({'password': list(e.messages)}) from e
         return attrs
 
     def create(self, validated_data):
