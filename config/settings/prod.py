@@ -1,7 +1,15 @@
 from .base import *  # noqa
-from .base import MIDDLEWARE, env
+from .base import ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS, MIDDLEWARE, env
 
 DEBUG = False
+
+# --- Render.com ---
+# Render har bir servisga avtomatik domen beradi (masalan usta-api.onrender.com) va uni
+# RENDER_EXTERNAL_HOSTNAME o'zgaruvchisida uzatadi. Uni qo'lda yozmaslik uchun shu yerda qo'shamiz.
+RENDER_EXTERNAL_HOSTNAME = env('RENDER_EXTERNAL_HOSTNAME', default='')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
 
 # --- Statik fayllar (WhiteNoise) ---
 # Development'da statik fayllarni runserver o'zi beradi. Production'da esa gunicorn buni qilmaydi,

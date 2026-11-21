@@ -1,0 +1,56 @@
+# Render Blueprint: Dashboard → New → Blueprint → usta_top reposini tanlang.
+# Bitta faylning o'zi Django API, React frontend va PostgreSQL bazasini yaratadi.
+services:
+  - type: web
+    name: usta-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health/
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: usta-db
+          property: connectionString
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: HTTPS
+        value: "True"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: LOG_LEVEL
+        value: INFO
+
+  # React (Vite) frontend: statik fayllar sifatida CDN orqali beriladi.
+  - type: web
+    name: usta-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+    routes:
+      # Lokaldagi Vite proxy'si bilan bir xil: /api/... so'rovlari backend'ga uzatiladi,
+      # brauzer uchun hammasi bitta domenda turadi va CORS kerak bo'lmaydi.
+      # MUHIM: backend domeni boshqacha chiqsa (masalan usta-api-x1y2.onrender.com), shu yerni o'zgartiring.
+      - type: rewrite
+        source: /api/*
+        destination: https://usta-api.onrender.com/api/*
+      # React Router (BrowserRouter): /ustalar/5 kabi manzillar ham index.html'ni ochadi
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: usta-db
+    plan: free
+    region: frankfurt
+    databaseName: usta
+    user: usta

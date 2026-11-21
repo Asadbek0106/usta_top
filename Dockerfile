@@ -40,5 +40,8 @@ USER app
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]
+# Render o'z portini PORT o'zgaruvchisida beradi (lokalda 8000).
+# Migratsiyalar har ishga tushishda bajariladi (Render bepul tarifida pre-deploy buyrug'i yo'q).
+# Worker soni WEB_CONCURRENCY orqali boshqariladi (gunicorn uni o'zi o'qiydi).
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --access-logfile -"]
 

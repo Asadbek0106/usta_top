@@ -25,3 +25,5 @@ htmlcov
 Dockerfile
 .dockerignore
 docker-compose*.yml
+# Frontend alohida quriladi, backend image uchun kerak emas
+frontend
