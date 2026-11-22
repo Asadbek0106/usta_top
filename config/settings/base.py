@@ -142,3 +142,13 @@ SPECTACULAR_SETTINGS = {
         'persistAuthorization': True,
     },
 }
+
+# --- Telegram bot (ro'yxatdan o'tishda telefon raqamni tasdiqlash) ---
+# Token BotFather'dan olinadi. Token berilmasa (lokal ishlab chiqish, testlar) tasdiqlash o'chiq turadi
+# va ro'yxatdan o'tish avvalgidek kodsiz ishlaydi.
+TELEGRAM_BOT_TOKEN = env('TELEGRAM_BOT_TOKEN', default='')
+TELEGRAM_BOT_USERNAME = env('TELEGRAM_BOT_USERNAME', default='').lstrip('@')
+TELEFON_TASDIQLASH = env.bool('TELEFON_TASDIQLASH', default=bool(TELEGRAM_BOT_TOKEN))
+# Kod qancha vaqt amal qiladi va bitta kodni necha marta noto'g'ri kiritish mumkin
+TASDIQ_KOD_MUDDATI = timedelta(minutes=10)
+TASDIQ_KOD_URINISHLAR = 5

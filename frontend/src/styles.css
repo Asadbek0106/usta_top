@@ -374,6 +374,28 @@ legend {
   gap: 1rem;
 }
 
+/* Ro'yxatdan o'tish: Telegram bot orqali tasdiqlash yo'riqnomasi */
+.bot-yoriqnoma {
+  background: var(--indigo-och);
+  border-left: 4px solid var(--indigo);
+  border-radius: var(--radius-kichik);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.bot-yoriqnoma p {
+  margin: 0 0 0.4rem;
+}
+
+.bot-yoriqnoma ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.bot-yoriqnoma li + li {
+  margin-top: 0.25rem;
+}
+
 /* ---------- Xabarlar ---------- */
 
 .xabar {

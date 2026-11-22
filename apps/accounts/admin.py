@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .forms import UserCreateForm, UserEditForm
-from .models import User
+from .models import TelefonTasdiq, User
 
 
 @admin.register(User)
@@ -27,3 +27,15 @@ class CustomUserAdmin(UserAdmin):
             'fields': ('telefon', 'usable_password', 'password1', 'password2'),
         }),
     )
+
+
+@admin.register(TelefonTasdiq)
+class TelefonTasdiqAdmin(admin.ModelAdmin):
+    list_display = ('telefon', 'yaratilgan', 'urinishlar', 'ishlatilgan')
+    list_filter = ('ishlatilgan',)
+    search_fields = ('telefon',)
+    # Kodlar faqat ko'rish uchun: admin ularni qo'lda yaratmaydi va o'zgartirmaydi
+    readonly_fields = ('telefon', 'kod', 'chat_id', 'urinishlar', 'ishlatilgan', 'yaratilgan')
+
+    def has_add_permission(self, request):
+        return False

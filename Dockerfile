@@ -44,5 +44,5 @@ EXPOSE 8000
 # Migratsiyalar va superuser (agar DJANGO_SUPERUSER_* berilgan bo'lsa) har ishga tushishda tekshiriladi,
 # chunki Render bepul tarifida pre-deploy buyrug'i ham, Shell ham yo'q.
 # Worker soni WEB_CONCURRENCY orqali boshqariladi (gunicorn uni o'zi o'qiydi).
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py ensure_superuser && exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --access-logfile -"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py ensure_superuser && python manage.py set_telegram_webhook && exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --access-logfile -"]
 

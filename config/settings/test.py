@@ -25,3 +25,9 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.locmem.EmailBackend',
     },
 }
+
+# Testlar haqiqiy Telegram'ga murojaat qilmasligi kerak (.env'da token bo'lsa ham).
+# Bot bilan bog'liq testlar bu sozlamalarni override_settings orqali o'zi yoqadi.
+TELEGRAM_BOT_TOKEN = ''
+TELEGRAM_BOT_USERNAME = ''
+TELEFON_TASDIQLASH = False
