@@ -7,8 +7,7 @@ from django.core.management.base import BaseCommand
 
 class Command(BaseCommand):
     help = (
-        "DJANGO_SUPERUSER_TELEFON va DJANGO_SUPERUSER_PASSWORD berilgan bo'lsa, superuser yaratadi. "
-        "Bunday foydalanuvchi allaqachon bo'lsa, hech narsa qilmaydi. "
+        "DJANGO_SUPERUSER_TELEFON va DJANGO_SUPERUSER_PASSWORD berilgan bo'lsa, admin akkauntni tayyorlaydi. "
         "Shell'siz serverlarda (Render bepul tarifi) admin akkaunt ochish uchun ishlatiladi."
     )
 
@@ -20,14 +19,29 @@ class Command(BaseCommand):
             return
 
         User = get_user_model()
-        if User.objects.filter(telefon=User.objects.normalize_telefon(telefon)).exists():
-            self.stdout.write(f'ensure_superuser: {telefon} allaqachon mavjud')
+        telefon = User.objects.normalize_telefon(telefon)
+        user = User.objects.filter(telefon=telefon).first()
+
+        if user is None:
+            try:
+                User.objects.create_superuser(telefon, parol)
+            except (ValidationError, ValueError) as xato:
+                # Noto'g'ri telefon formati butun saytni ishdan chiqarmasligi kerak — faqat logga yozamiz
+                self.stderr.write(f"ensure_superuser: yaratib bo'lmadi — {xato}")
+                return
+            self.stdout.write(self.style.SUCCESS(f'ensure_superuser: {telefon} superuser yaratildi'))
             return
 
-        try:
-            User.objects.create_superuser(telefon, parol)
-        except (ValidationError, ValueError) as xato:
-            # Noto'g'ri telefon formati butun saytni ishdan chiqarmasligi kerak — faqat logga yozamiz
-            self.stderr.write(f'ensure_superuser: yaratib bo\'lmadi — {xato}')
+        if user.is_superuser and user.is_staff:
+            # Allaqachon admin: parolga tegmaymiz (admin panelda almashtirilgan bo'lishi mumkin)
+            self.stdout.write(f'ensure_superuser: {telefon} allaqachon superuser')
             return
-        self.stdout.write(self.style.SUCCESS(f'ensure_superuser: {telefon} superuser yaratildi'))
+
+        # Raqam saytda oddiy foydalanuvchi sifatida ro'yxatdan o'tgan: unga admin huquqi beramiz.
+        # Parol Environment'dagiga almashtiriladi — admin panelga shu ma'lumot bilan kiriladi.
+        user.is_staff = True
+        user.is_superuser = True
+        user.is_active = True
+        user.set_password(parol)
+        user.save(update_fields=['is_staff', 'is_superuser', 'is_active', 'password'])
+        self.stdout.write(self.style.SUCCESS(f'ensure_superuser: {telefon} superuser qilindi (mavjud akkaunt)'))
