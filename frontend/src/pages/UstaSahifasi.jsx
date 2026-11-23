@@ -6,6 +6,8 @@ import { useAuth } from '../auth/AuthContext'
 import Maydon, { UmumiyXato } from '../components/Maydon'
 import Reyting, { Yulduzlar } from '../components/Reyting'
 import Sahifalash from '../components/Sahifalash'
+import SevimliTugma from '../components/SevimliTugma'
+import UstaJavobi from '../components/UstaJavobi'
 import { sana, somda } from '../components/utils'
 import Yuklanmoqda, { XatoBlok } from '../components/Yuklanmoqda'
 import { useSarlavha } from '../hooks/useSarlavha'
@@ -18,7 +20,8 @@ export default function UstaSahifasi() {
 }
 
 function UstaTafsiloti({ id }) {
-  const { data: usta, xato, qaytaYukla } = useSorov(`/ustalar/${id}/`)
+  const { user } = useAuth()
+  const { data: usta, xato, qaytaYukla, ozgartir } = useSorov(`/ustalar/${id}/`)
   const [sahifa, setSahifa] = useState(1)
   const sharhlar = useSorov(usta ? `/ustalar/${id}/sharhlar/` : null, { page: sahifa > 1 ? sahifa : '' })
   useSarlavha(usta?.ism ?? (xato?.status === 404 ? 'Usta topilmadi' : 'Usta'))
@@ -44,7 +47,12 @@ function UstaTafsiloti({ id }) {
           <h1>{usta.ism || 'Ismsiz usta'}</h1>
           <p className="usta-sahifa__shahar">{usta.shahar.nomi}</p>
         </div>
-        <Reyting qiymat={usta.reyting} soni={usta.sharhlar_soni} />
+        <div className="usta-sahifa__belgilar">
+          {user && user.telefon !== usta.telefon && (
+            <SevimliTugma ustaId={usta.id} sevimli={usta.sevimli} ozgardi={(v) => ozgartir((u) => ({ ...u, sevimli: v }))} />
+          )}
+          <Reyting qiymat={usta.reyting} soni={usta.sharhlar_soni} />
+        </div>
       </header>
 
       {usta.tavsif && <p className="usta-sahifa__tavsif">{usta.tavsif}</p>}
@@ -78,6 +86,7 @@ function UstaTafsiloti({ id }) {
                 <Yulduzlar baho={s.baho} />
                 {s.matn && <p>{s.matn}</p>}
                 <small className="xira"><time dateTime={s.yaratilgan}>{sana(s.yaratilgan)}</time></small>
+                {s.usta_javobi && <UstaJavobi matn={s.usta_javobi} vaqt={s.javob_vaqti} />}
               </li>
             ))}
           </ul>

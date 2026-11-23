@@ -1,12 +1,14 @@
 import random
+from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.arizalar.models import Ariza, Sharh
+from apps.arizalar.models import Ariza, ArizaTarixi, Sharh
 from apps.ustalar.models import Kategoriya, Shahar, Usta, Xizmat
 
 SHAHARLAR = ['Toshkent', 'Samarqand', 'Buxoro', 'Andijon', 'Namangan']
@@ -68,20 +70,50 @@ class Command(BaseCommand):
 
         if not Ariza.objects.exists():
             tasdiqlangan_ustalar = [u for u in ustalar if u.tasdiqlangan]
-            for _ in range(30):
+            hozir = timezone.now()
+            for _ in range(40):
                 usta = random.choice(tasdiqlangan_ustalar)
                 xizmat = random.choice(list(usta.xizmatlar.all()))
                 status = random.choice(Ariza.Status.values)
+                mijoz = random.choice(mijozlar)
+                # Arizalar oxirgi ~6 oyga tarqatiladi: ustaning statistikasida oylar bo'yicha grafik chiqishi uchun
+                yaratilgan = hozir - timedelta(days=random.randint(0, 170), hours=random.randint(0, 23))
+                yangilangan = min(hozir, yaratilgan + timedelta(days=random.randint(1, 5)))
+                narx = None
+                if status in (Ariza.Status.QABUL, Ariza.Status.BAJARILDI):
+                    narx = xizmat.narx_dan + Decimal(random.randrange(0, 20) * 10000)
                 ariza = Ariza.objects.create(
-                    mijoz=random.choice(mijozlar),
+                    mijoz=mijoz,
                     usta=usta,
                     kategoriya=xizmat.kategoriya,
                     tavsif="Uyda ta'mirlash ishi kerak",
                     manzil="Toshkent, Chilonzor tumani",
                     status=status,
+                    kelishilgan_narx=narx,
                 )
+                Ariza.objects.filter(pk=ariza.pk).update(yaratilgan=yaratilgan, yangilangan=yangilangan)
+
+                tarix = [ArizaTarixi(ariza=ariza, yangi_status=Ariza.Status.YANGI, kim=mijoz, vaqt=yaratilgan)]
+                if status in (Ariza.Status.QABUL, Ariza.Status.BAJARILDI):
+                    tarix.append(ArizaTarixi(ariza=ariza, eski_status=Ariza.Status.YANGI,
+                                             yangi_status=Ariza.Status.QABUL, kim=usta.user,
+                                             vaqt=yaratilgan + (yangilangan - yaratilgan) / 2))
                 if status == Ariza.Status.BAJARILDI:
-                    Sharh.objects.create(ariza=ariza, baho=random.randint(3, 5), matn="Ish sifatli bajarildi")
+                    tarix.append(ArizaTarixi(ariza=ariza, eski_status=Ariza.Status.QABUL,
+                                             yangi_status=Ariza.Status.BAJARILDI, kim=usta.user, vaqt=yangilangan))
+                if status == Ariza.Status.BEKOR:
+                    tarix.append(ArizaTarixi(ariza=ariza, eski_status=Ariza.Status.YANGI,
+                                             yangi_status=Ariza.Status.BEKOR, kim=mijoz, vaqt=yangilangan))
+                ArizaTarixi.objects.bulk_create(tarix)
+
+                if status == Ariza.Status.BAJARILDI:
+                    javob = random.random() < 0.5
+                    sharh = Sharh.objects.create(
+                        ariza=ariza, baho=random.randint(3, 5), matn="Ish sifatli bajarildi",
+                        usta_javobi="Rahmat! Yana murojaat qiling." if javob else '',
+                        javob_vaqti=yangilangan + timedelta(hours=3) if javob else None,
+                    )
+                    Sharh.objects.filter(pk=sharh.pk).update(yaratilgan=yangilangan)
 
         self.stdout.write(self.style.SUCCESS(
             f"Tayyor: {Usta.objects.count()} usta, {User.objects.count()} foydalanuvchi, "

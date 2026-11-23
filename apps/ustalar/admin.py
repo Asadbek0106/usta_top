@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Kategoriya, Shahar, Usta, Xizmat
+from .models import Kategoriya, Sevimli, Shahar, Usta, Xizmat
 
 
 @admin.register(Shahar)
@@ -50,3 +50,11 @@ class UstaAdmin(admin.ModelAdmin):
     def tasdiqlash(self, request, queryset):
         soni = queryset.update(tasdiqlangan=True)
         self.message_user(request, f"{soni} ta usta tasdiqlandi.")
+
+
+@admin.register(Sevimli)
+class SevimliAdmin(admin.ModelAdmin):
+    list_display = ('user', 'usta', 'yaratilgan')
+    list_select_related = ('user', 'usta__user')
+    search_fields = ('user__telefon', 'usta__user__telefon')
+    autocomplete_fields = ('user', 'usta')

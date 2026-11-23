@@ -138,6 +138,10 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': r'/api/v[0-9]',
     'COMPONENT_SPLIT_REQUEST': True,
+    # Ariza.status va ArizaTarixi.eski/yangi_status bitta tanlovlar to'plami: sxemada bitta nom bilan chiqadi
+    'ENUM_NAME_OVERRIDES': {
+        'ArizaStatusEnum': 'apps.arizalar.models.Ariza.Status',
+    },
     'SWAGGER_UI_SETTINGS': {
         'persistAuthorization': True,
     },

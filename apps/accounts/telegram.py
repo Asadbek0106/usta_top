@@ -100,8 +100,9 @@ def update_ni_qayta_ishla(update):
     if not kontakt:
         xabar_yubor(
             chat_id,
-            "Assalomu alaykum! Bu bot <b>Usta</b> saytida ro'yxatdan o'tish uchun telefon raqamingizni "
-            "tasdiqlaydi.\n\nPastdagi <b>📱 Raqamni yuborish</b> tugmasini bosing — bot sizga 6 xonali kod beradi.",
+            "Assalomu alaykum! Bu bot <b>Usta</b> saytida telefon raqamingizni tasdiqlaydi: ro'yxatdan "
+            "o'tish yoki unutilgan parolni tiklash uchun.\n\nPastdagi <b>📱 Raqamni yuborish</b> tugmasini "
+            "bosing — bot sizga 6 xonali kod beradi.",
             KONTAKT_KLAVIATURASI,
         )
         return
@@ -117,10 +118,12 @@ def update_ni_qayta_ishla(update):
                     KLAVIATURANI_OLIB_TASHLA)
         return
 
-    if User.objects.filter(telefon=telefon).exists():
-        xabar_yubor(chat_id, f"{telefon} raqami allaqachon ro'yxatdan o'tgan. Saytda shu raqam bilan kiring.",
-                    KLAVIATURANI_OLIB_TASHLA)
-        return
+    # Raqam ro'yxatdan o'tgan bo'lsa, kod parolni tiklash uchun beriladi
+    maqsad = (
+        TelefonTasdiq.Maqsad.TIKLASH
+        if User.objects.filter(telefon=telefon, is_active=True).exists()
+        else TelefonTasdiq.Maqsad.ROYXAT
+    )
 
     oxirgi_10_daqiqa = timezone.now() - timedelta(minutes=10)
     yaqindagi_kodlar = TelefonTasdiq.objects.filter(chat_id=chat_id, yaratilgan__gte=oxirgi_10_daqiqa).count()
@@ -131,12 +134,19 @@ def update_ni_qayta_ishla(update):
 
     # Shu raqamning eski kodlari bekor bo'ladi — faqat eng oxirgisi ishlaydi
     TelefonTasdiq.objects.filter(telefon=telefon, ishlatilgan=False).update(ishlatilgan=True)
-    tasdiq = TelefonTasdiq.objects.create(telefon=telefon, kod=yangi_kod(), chat_id=chat_id)
+    tasdiq = TelefonTasdiq.objects.create(telefon=telefon, kod=yangi_kod(), chat_id=chat_id, maqsad=maqsad)
     daqiqa = int(settings.TASDIQ_KOD_MUDDATI.total_seconds() // 60)
-    xabar_yubor(
-        chat_id,
-        f"Tasdiqlash kodingiz: <code>{tasdiq.kod}</code>\n\n"
-        f"Uni saytdagi ro'yxatdan o'tish formasiga kiriting. Kod {daqiqa} daqiqa amal qiladi.\n"
-        f"Telefon raqam: <b>{telefon}</b>\n\nKodni hech kimga bermang.",
-        KLAVIATURANI_OLIB_TASHLA,
-    )
+    if maqsad == TelefonTasdiq.Maqsad.TIKLASH:
+        matn = (
+            f"{telefon} raqami saytda ro'yxatdan o'tgan.\n\n"
+            f"Parolni tiklash kodi: <code>{tasdiq.kod}</code>\n\n"
+            f"Uni saytdagi <b>Parolni tiklash</b> sahifasiga kiriting. Kod {daqiqa} daqiqa amal qiladi.\n"
+            "Agar parolni tiklamoqchi bo'lmasangiz, bu xabarga e'tibor bermang.\n\nKodni hech kimga bermang."
+        )
+    else:
+        matn = (
+            f"Tasdiqlash kodingiz: <code>{tasdiq.kod}</code>\n\n"
+            f"Uni saytdagi ro'yxatdan o'tish formasiga kiriting. Kod {daqiqa} daqiqa amal qiladi.\n"
+            f"Telefon raqam: <b>{telefon}</b>\n\nKodni hech kimga bermang."
+        )
+    xabar_yubor(chat_id, matn, KLAVIATURANI_OLIB_TASHLA)

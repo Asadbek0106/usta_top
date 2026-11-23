@@ -31,11 +31,11 @@ class CustomUserAdmin(UserAdmin):
 
 @admin.register(TelefonTasdiq)
 class TelefonTasdiqAdmin(admin.ModelAdmin):
-    list_display = ('telefon', 'yaratilgan', 'urinishlar', 'ishlatilgan')
-    list_filter = ('ishlatilgan',)
+    list_display = ('telefon', 'maqsad', 'yaratilgan', 'urinishlar', 'ishlatilgan')
+    list_filter = ('maqsad', 'ishlatilgan')
     search_fields = ('telefon',)
     # Kodlar faqat ko'rish uchun: admin ularni qo'lda yaratmaydi va o'zgartirmaydi
-    readonly_fields = ('telefon', 'kod', 'chat_id', 'urinishlar', 'ishlatilgan', 'yaratilgan')
+    readonly_fields = ('telefon', 'maqsad', 'kod', 'chat_id', 'urinishlar', 'ishlatilgan', 'yaratilgan')
 
     def has_add_permission(self, request):
         return False

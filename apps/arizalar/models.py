@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
@@ -66,6 +67,8 @@ class Sharh(TimeStampedModel):
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
     matn = models.TextField(blank=True)
+    usta_javobi = models.TextField("Ustaning javobi", blank=True)
+    javob_vaqti = models.DateTimeField("Javob yozilgan vaqt", null=True, blank=True)
 
     class Meta:
         verbose_name = "Sharh"
@@ -84,3 +87,32 @@ class Sharh(TimeStampedModel):
     def clean(self):
         if self.ariza_id and self.ariza.status != Ariza.Status.BAJARILDI:
             raise ValidationError("Sharhni faqat bajarilgan ariza uchun yozish mumkin.")
+
+
+class ArizaTarixi(models.Model):
+    """Arizaning har bir holat o'zgarishi: kim, qachon, qaysi holatdan qaysi holatga o'tkazgani.
+
+    Birinchi yozuv ariza yaratilganda qo'shiladi (eski_status bo'sh bo'ladi).
+    """
+
+    ariza = models.ForeignKey(Ariza, on_delete=models.CASCADE, related_name='tarix')
+    eski_status = models.CharField(max_length=20, choices=Ariza.Status.choices, blank=True)
+    yangi_status = models.CharField(max_length=20, choices=Ariza.Status.choices)
+    kim = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+    # auto_now_add emas: eski arizalar uchun tarixni migratsiyada asl sanasi bilan tiklash kerak
+    vaqt = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "Ariza tarixi"
+        verbose_name_plural = "Ariza tarixi"
+        ordering = ['vaqt', 'pk']
+
+    def __str__(self):
+        eski = Ariza.Status(self.eski_status).label if self.eski_status else '—'
+        return f"#{self.ariza_id}: {eski} → {self.get_yangi_status_display()}"

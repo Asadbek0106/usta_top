@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
@@ -10,13 +10,14 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from . import services
 from .filters import ArizaFilter
-from .models import Ariza
+from .models import Ariza, ArizaTarixi
 from .permissions import IsArizaMijozi, IsArizaUstasi
 from .serializers import (
     ArizaCreateSerializer,
     ArizaSerializer,
     ArizaUpdateSerializer,
     QabulSerializer,
+    SharhJavobSerializer,
     SharhSerializer,
 )
 
@@ -43,6 +44,7 @@ class ArizaViewSet(
             Ariza.objects
             .filter(Q(mijoz=user) | Q(usta__user=user))
             .select_related('mijoz', 'usta__user', 'kategoriya', 'sharh')
+            .prefetch_related(Prefetch('tarix', queryset=ArizaTarixi.objects.select_related('kim')))
         )
 
     def get_throttles(self):
@@ -88,13 +90,13 @@ class ArizaViewSet(
         ariza = self.get_object()
         serializer = QabulSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ariza = services.qabul_qilish(ariza, **serializer.validated_data)
+        ariza = services.qabul_qilish(ariza, kim=request.user, **serializer.validated_data)
         return self._javob(ariza)
 
     @extend_schema(request=None, responses=ArizaSerializer)
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsArizaUstasi])
     def bajarildi(self, request, pk=None):
-        ariza = services.bajarildi_deb_belgilash(self.get_object())
+        ariza = services.bajarildi_deb_belgilash(self.get_object(), kim=request.user)
         return self._javob(ariza)
 
     @extend_schema(request=None, responses=ArizaSerializer)
@@ -102,7 +104,7 @@ class ArizaViewSet(
     def bekor(self, request, pk=None):
         # get_queryset faqat mijoz yoki ustaning arizalarini qaytaradi,
         # shuning uchun bekor qilishni faqat shu ikkisi qila oladi.
-        ariza = services.bekor_qilish(self.get_object())
+        ariza = services.bekor_qilish(self.get_object(), kim=request.user)
         return self._javob(ariza)
 
     @extend_schema(request=SharhSerializer, responses={201: SharhSerializer})
@@ -113,3 +115,14 @@ class ArizaViewSet(
         serializer.is_valid(raise_exception=True)
         sharh = services.sharh_qoldirish(ariza, **serializer.validated_data)
         return Response(SharhSerializer(sharh).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=SharhJavobSerializer, responses=SharhSerializer)
+    @action(detail=True, methods=['post'], url_path='sharh/javob',
+            permission_classes=[IsAuthenticated, IsArizaUstasi])
+    def sharh_javob(self, request, pk=None):
+        """Usta sharhga ochiq javob yozadi. Qayta yuborilsa, javob yangilanadi."""
+        ariza = self.get_object()
+        serializer = SharhJavobSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sharh = services.sharhga_javob(ariza, matn=serializer.validated_data['matn'])
+        return Response(SharhSerializer(sharh).data)

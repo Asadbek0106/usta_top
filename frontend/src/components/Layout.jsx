@@ -44,6 +44,7 @@ export default function Layout() {
           <nav className="menyu" aria-label="Asosiy menyu">
             <NavLink to="/" end>Ustalar</NavLink>
             {user && <NavLink to="/arizalarim">Arizalarim</NavLink>}
+            {user && <NavLink to="/sevimlilar">Sevimlilar</NavLink>}
             {user?.usta_mi && <NavLink to="/usta-profilim">Usta profilim</NavLink>}
             {user && !user.usta_mi && <NavLink to="/usta-bolish">Usta bo'lish</NavLink>}
           </nav>

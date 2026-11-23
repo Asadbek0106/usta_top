@@ -1,6 +1,6 @@
 # Usta — frontend
 
-Usta API uchun React ilovasi: ustalar katalogi, usta sahifasi, ariza yuborish, arizalar bilan ishlash va usta profili.
+Usta API uchun React ilovasi: ustalar katalogi, usta sahifasi, ariza yuborish, arizalar bilan ishlash (tarixi bilan), sevimli ustalar, parolni tiklash, usta profili va statistikasi.
 
 ## Texnologiyalar
 
@@ -41,12 +41,17 @@ src/
 │   ├── AuthContext.jsx    # kirish, ro'yxatdan o'tish, chiqish, joriy foydalanuvchi
 │   └── Himoyalangan.jsx   # faqat tizimga kirganlar (yoki faqat ustalar) uchun sahifalar
 ├── components/            # Layout, Reyting, Sahifalash, Maydon, StatusBelgi, utils
+│   ├── Statistika.jsx     # ustaning statistikasi: raqamlar, oylar grafigi, baholar
+│   ├── SevimliTugma.jsx   # ♡ tugmasi (optimistik yangilanish)
+│   └── UstaJavobi.jsx     # sharh ostidagi usta javobi
 ├── pages/
 │   ├── Katalog.jsx        # ustalar: kategoriya, shahar, narx, reyting, qidiruv, saralash
-│   ├── UstaSahifasi.jsx   # xizmatlar, sharhlar, ariza formasi
-│   ├── Arizalarim.jsx     # qabul / bajarildi / bekor qilish, sharh yozish
+│   ├── UstaSahifasi.jsx   # xizmatlar, sharhlar va javoblar, ariza formasi
+│   ├── Arizalarim.jsx     # qabul / bajarildi / bekor qilish, tarix, sharh va unga javob
+│   ├── Sevimlilar.jsx     # saqlangan ustalar
 │   ├── UstaBolish.jsx     # usta profilini yaratish
-│   ├── UstaProfilim.jsx   # profilni tahrirlash, xizmatlarni boshqarish
+│   ├── UstaProfilim.jsx   # statistika, profilni tahrirlash, xizmatlarni boshqarish
+│   ├── ParolTiklash.jsx   # Telegram bot kodi bilan yangi parol
 │   ├── Kirish.jsx, RoyxatdanOtish.jsx, Topilmadi.jsx
 ├── App.jsx                # marshrutlar
 └── styles.css             # dizayn tizimi

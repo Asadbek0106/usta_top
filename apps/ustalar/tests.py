@@ -1,3 +1,7 @@
+from datetime import timedelta
+
+from django.utils import timezone
+
 from apps.arizalar.models import Ariza, Sharh
 from apps.core.testing import (
     BaseAPITestCase,
@@ -6,11 +10,13 @@ from apps.core.testing import (
     usta_yarat,
 )
 
-from .models import Kategoriya, Usta, Xizmat
+from .models import Kategoriya, Sevimli, Usta, Xizmat
 
 USTALAR = '/api/v1/ustalar/'
 MEN = '/api/v1/ustalar/men/'
 XIZMATLARIM = '/api/v1/xizmatlarim/'
+SEVIMLILAR = '/api/v1/ustalar/sevimlilar/'
+STATISTIKA = '/api/v1/ustalar/men/statistika/'
 
 
 class UstaRoyxatiTest(BaseAPITestCase):
@@ -256,6 +262,20 @@ class UstaFiltrVaTartibTest(BaseAPITestCase):
             [self.begona_usta.pk, self.usta.pk, self.elektrik_usta.pk],
         )
 
+    def test_eng_arzon_narx_boyicha(self):
+        # usta va begona_usta 100 000 dan, elektrik_usta eng arzon xizmati 300 000 dan
+        self.begona_usta.xizmatlar.update(narx_dan=80000)
+        javob = self.client.get(USTALAR, {'ordering': 'eng_arzon'})
+        self.assertEqual(self.idlar(javob), [self.begona_usta.pk, self.usta.pk, self.elektrik_usta.pk])
+        self.assertEqual(javob.data['results'][2]['eng_arzon'], '300000.00')
+
+    def test_tajriba_boyicha(self):
+        Xizmat.objects.filter(usta=self.elektrik_usta, kategoriya=self.santexnik).update(tajriba=12)
+        self.usta.xizmatlar.update(tajriba=5)
+        javob = self.client.get(USTALAR, {'ordering': '-tajriba_yil'})
+        self.assertEqual(self.idlar(javob)[:2], [self.elektrik_usta.pk, self.usta.pk])
+        self.assertEqual(javob.data['results'][0]['tajriba_yil'], 12)
+
     def test_sahifalash(self):
         javob = self.client.get(USTALAR, {'page_size': 2})
         self.assertEqual(javob.data['count'], 3)
@@ -276,3 +296,115 @@ class UstaFiltrVaTartibTest(BaseAPITestCase):
         with self.assertNumQueries(3):  # COUNT + ustalar (JOIN) + kategoriyalar (prefetch)
             javob = self.client.get(USTALAR)
         self.assertEqual(javob.data['count'], 13)
+
+
+class SevimliTest(BaseAPITestCase):
+    def url(self, usta):
+        return f'{USTALAR}{usta.pk}/sevimli/'
+
+    def test_qoshish_va_olib_tashlash(self):
+        self.kirish(self.mijoz)
+        self.assertEqual(self.client.post(self.url(self.usta)).status_code, 201)
+        self.assertEqual(self.client.post(self.url(self.usta)).status_code, 200)  # takror qo'shilmaydi
+        self.assertEqual(Sevimli.objects.count(), 1)
+
+        self.assertTrue(self.client.get(f'{USTALAR}{self.usta.pk}/').data['sevimli'])
+        royxat = {u['id']: u['sevimli'] for u in self.client.get(USTALAR).data['results']}
+        self.assertEqual(royxat, {self.usta.pk: True, self.begona_usta.pk: False})
+
+        javob = self.client.delete(self.url(self.usta))
+        self.assertEqual(javob.status_code, 200)
+        self.assertFalse(Sevimli.objects.exists())
+
+    def test_sevimlilar_royxati_faqat_ozimniki_va_yangisi_birinchi(self):
+        self.kirish(self.mijoz)
+        self.client.post(self.url(self.usta))
+        self.client.post(self.url(self.begona_usta))
+        Sevimli.objects.create(user=self.begona_mijoz, usta=self.usta)
+
+        javob = self.client.get(SEVIMLILAR)
+        self.assertEqual(javob.status_code, 200)
+        self.assertEqual([u['id'] for u in javob.data['results']], [self.begona_usta.pk, self.usta.pk])
+        self.assertTrue(all(u['sevimli'] for u in javob.data['results']))
+
+    def test_tasdiqlanmagan_usta_royxatda_korinmaydi(self):
+        Sevimli.objects.create(user=self.mijoz, usta=self.usta)
+        Usta.objects.filter(pk=self.usta.pk).update(tasdiqlangan=False)
+        self.kirish(self.mijoz)
+        self.assertEqual(self.client.get(SEVIMLILAR).data['count'], 0)
+
+    def test_mehmon_uchun_ishlamaydi(self):
+        self.assertEqual(self.client.post(self.url(self.usta)).status_code, 401)
+        self.assertEqual(self.client.get(SEVIMLILAR).status_code, 401)
+        self.assertFalse(self.client.get(f'{USTALAR}{self.usta.pk}/').data['sevimli'])
+
+    def test_usta_ozini_qosha_olmaydi(self):
+        self.kirish(self.usta.user)
+        javob = self.client.post(self.url(self.usta))
+        self.assertEqual(javob.status_code, 400)
+        self.assertEqual(javob.data['code'], 'oziga_sevimli')
+
+    def test_royxat_sorovlar_soni_ozgarmaydi(self):
+        self.kirish(self.mijoz)
+        with self.assertNumQueries(3):
+            self.client.get(USTALAR)
+
+
+class StatistikaTest(BaseAPITestCase):
+    def ariza(self, status, narx=None, mijoz=None):
+        ariza = ariza_yarat(mijoz=mijoz or self.mijoz, usta=self.usta, kategoriya=self.santexnik, status=status)
+        if narx is not None:
+            Ariza.objects.filter(pk=ariza.pk).update(kelishilgan_narx=narx)
+        return ariza
+
+    def test_hisob_kitob(self):
+        bajarilgan = self.ariza(Ariza.Status.BAJARILDI, narx=200000)
+        Sharh.objects.create(ariza=bajarilgan, baho=5)
+        ikkinchi = self.ariza(Ariza.Status.BAJARILDI, narx=150000)
+        Sharh.objects.create(ariza=ikkinchi, baho=4)
+        self.ariza(Ariza.Status.QABUL, narx=999000)  # hali bajarilmagan: daromadga kirmaydi
+        self.ariza(Ariza.Status.BEKOR)
+        self.ariza(Ariza.Status.YANGI)
+        # Boshqa ustaning arizasi hisobga kirmaydi
+        ariza_yarat(mijoz=self.mijoz, usta=self.begona_usta, kategoriya=self.santexnik)
+
+        self.kirish(self.usta.user)
+        javob = self.client.get(STATISTIKA)
+        self.assertEqual(javob.status_code, 200, javob.data)
+        d = javob.data
+        self.assertEqual(d['jami_arizalar'], 5)
+        self.assertEqual(d['holatlar'], {'yangi': 1, 'qabul': 1, 'bajarildi': 2, 'bekor': 1})
+        self.assertEqual(d['daromad'], 350000)
+        self.assertEqual(d['bajarish_foizi'], 67)  # 3 ta yakunlangandan 2 tasi bajarilgan
+        self.assertEqual(d['shu_oy'], {'arizalar': 5, 'bajarildi': 2, 'daromad': 350000})
+        self.assertEqual(d['reyting'], 4.5)
+        self.assertEqual(d['baholar'], {'1': 0, '2': 0, '3': 0, '4': 1, '5': 1})
+        self.assertEqual(d['kategoriyalar'], [{'nomi': 'Santexnik', 'soni': 5}])
+
+        self.assertEqual(len(d['oylar']), 6)
+        self.assertEqual(d['oylar'][-1]['arizalar'], 5)
+        self.assertEqual(d['oylar'][-1]['daromad'], 350000)
+        self.assertEqual(sum(o['arizalar'] for o in d['oylar'][:-1]), 0)
+
+    def test_eski_oylar_alohida_hisoblanadi(self):
+        eski = self.ariza(Ariza.Status.BAJARILDI, narx=100000)
+        Ariza.objects.filter(pk=eski.pk).update(yaratilgan=timezone.now() - timedelta(days=62))
+        self.kirish(self.usta.user)
+        d = self.client.get(STATISTIKA).data
+        self.assertEqual(d['shu_oy']['arizalar'], 0)
+        self.assertEqual(sum(o['arizalar'] for o in d['oylar']), 1)
+        self.assertEqual(d['oylar'][-1]['arizalar'], 0)
+
+    def test_arizasi_yoq_usta(self):
+        self.kirish(self.usta.user)
+        d = self.client.get(STATISTIKA).data
+        self.assertEqual(d['jami_arizalar'], 0)
+        self.assertIsNone(d['bajarish_foizi'])
+        self.assertIsNone(d['reyting'])
+        self.assertEqual(d['daromad'], 0)
+
+    def test_faqat_usta_uchun(self):
+        self.kirish(self.mijoz)
+        self.assertEqual(self.client.get(STATISTIKA).status_code, 403)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(STATISTIKA).status_code, 401)

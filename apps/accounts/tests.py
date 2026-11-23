@@ -11,7 +11,7 @@ from apps.core.testing import PAROL, foydalanuvchi_yarat
 
 from .forms import UserCreateForm
 from .models import TelefonTasdiq, User
-from .telegram import webhook_maxfiy_kalit
+from .telegram import update_ni_qayta_ishla, webhook_maxfiy_kalit
 
 REGISTER = '/api/v1/auth/register/'
 LOGIN = '/api/v1/auth/login/'
@@ -19,6 +19,7 @@ REFRESH = '/api/v1/auth/refresh/'
 LOGOUT = '/api/v1/auth/logout/'
 ME = '/api/v1/auth/me/'
 TELEGRAM = '/api/v1/auth/telegram/'
+TIKLASH = '/api/v1/auth/parol-tiklash/'
 WEBHOOK = '/api/v1/auth/telegram/webhook/'
 
 
@@ -275,10 +276,15 @@ class TelegramTasdiqlashTest(APITestCase):
         self.webhook(kontakt_update('+79161234567'))
         self.assertFalse(TelefonTasdiq.objects.exists())
 
-    def test_royxatdan_otgan_raqamga_kod_berilmaydi(self, xabar_yubor):
+    def test_royxatdan_otgan_raqamga_tiklash_kodi_beriladi(self, xabar_yubor):
         foydalanuvchi_yarat('+998901234567')
         self.webhook(kontakt_update('+998901234567'))
-        self.assertFalse(TelefonTasdiq.objects.exists())
+        tasdiq = TelefonTasdiq.objects.get()
+        self.assertEqual(tasdiq.maqsad, TelefonTasdiq.Maqsad.TIKLASH)
+        self.assertIn('Parolni tiklash', xabar_yubor.call_args.args[1])
+        # Tiklash kodi bilan shu raqamga ikkinchi akkaunt ochib bo'lmaydi
+        User.objects.all().delete()
+        self.assertEqual(self.royxat(tasdiq.kod).status_code, 400)
 
     def test_bitta_chatdan_kod_soni_cheklangan(self, xabar_yubor):
         for i in range(5):
@@ -332,3 +338,75 @@ class TelegramPollingTest(TestCase):
                 call_command('telegram_polling')
         metodlar = [chaqiruv.args[0] for chaqiruv in api.call_args_list]
         self.assertNotIn('deleteWebhook', metodlar)
+
+
+YANGI_PAROL = 'Yangi-Parol-2026'
+
+
+@override_settings(TELEGRAM_BOT_TOKEN='test-token', TELEGRAM_BOT_USERNAME='usta_test_bot')
+@patch('apps.accounts.telegram.xabar_yubor')
+class ParolTiklashTest(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = foydalanuvchi_yarat('+998901234567')
+
+    def kod_ol(self, telefon='+998901234567'):
+        update_ni_qayta_ishla(kontakt_update(telefon))
+        return TelefonTasdiq.objects.filter(telefon=telefon, ishlatilgan=False).latest('yaratilgan').kod
+
+    def tikla(self, kod, telefon='+998901234567', parol=YANGI_PAROL, parol2=None):
+        data = {'telefon': telefon, 'kod': kod, 'password': parol, 'password2': parol2 or parol}
+        return self.client.post(TIKLASH, data, format='json')
+
+    def test_kod_bilan_parol_yangilanadi(self, xabar_yubor):
+        javob = self.tikla(self.kod_ol(), telefon='+998 90 123-45-67')
+        self.assertEqual(javob.status_code, 200, javob.data)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(YANGI_PAROL))
+        self.assertFalse(self.user.check_password(PAROL))
+        self.assertTrue(TelefonTasdiq.objects.get().ishlatilgan)
+
+    def test_eski_sessiyalar_yopiladi(self, xabar_yubor):
+        kirish = self.client.post(LOGIN, {'telefon': '+998901234567', 'password': PAROL}, format='json')
+        refresh = kirish.data['refresh']
+        self.assertEqual(self.tikla(self.kod_ol()).status_code, 200)
+        self.assertEqual(self.client.post(REFRESH, {'refresh': refresh}, format='json').status_code, 401)
+
+    def test_notogri_kod(self, xabar_yubor):
+        kod = self.kod_ol()
+        javob = self.tikla('000000' if kod != '000000' else '111111')
+        self.assertEqual(javob.status_code, 400)
+        self.assertIn('kod', javob.data)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(PAROL))
+
+    def test_royxatdan_otish_kodi_bilan_parol_tiklanmaydi(self, xabar_yubor):
+        # Kod yangi raqamga (ro'yxat uchun) berilgan, keyin shu raqam bilan akkaunt paydo bo'lgan
+        kod = self.kod_ol('+998907777777')
+        foydalanuvchi_yarat('+998907777777')
+        self.assertEqual(self.tikla(kod, telefon='+998907777777').status_code, 400)
+
+    def test_kod_ikki_marta_ishlatilmaydi(self, xabar_yubor):
+        kod = self.kod_ol()
+        self.assertEqual(self.tikla(kod).status_code, 200)
+        self.assertEqual(self.tikla(kod, parol='Boshqa-Parol-99').status_code, 400)
+
+    def test_kuchsiz_parol_va_mos_kelmagan_parollar(self, xabar_yubor):
+        kod = self.kod_ol()
+        self.assertIn('password', self.tikla(kod, parol='12345678').data)
+        self.assertIn('password2', self.tikla(kod, parol2='Boshqa-Parol-99').data)
+
+    def test_royxatdan_otmagan_raqam(self, xabar_yubor):
+        javob = self.tikla('123456', telefon='+998909999999')
+        self.assertEqual(javob.status_code, 400)
+        self.assertIn('kod', javob.data)
+
+    def test_bloklangan_foydalanuvchiga_tiklash_kodi_berilmaydi(self, xabar_yubor):
+        self.user.is_active = False
+        self.user.save()
+        update_ni_qayta_ishla(kontakt_update('+998901234567'))
+        self.assertEqual(TelefonTasdiq.objects.get().maqsad, TelefonTasdiq.Maqsad.ROYXAT)
+
+    @override_settings(TELEGRAM_BOT_TOKEN='')
+    def test_bot_sozlanmagan_bolsa_ishlamaydi(self, xabar_yubor):
+        self.assertEqual(self.tikla('123456').status_code, 503)

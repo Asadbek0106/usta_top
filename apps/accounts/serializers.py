@@ -18,6 +18,29 @@ class TelefonField(serializers.CharField):
         return User.objects.normalize_telefon(value)
 
 
+def tasdiq_kodini_tekshir(telefon, kod, maqsad):
+    """Telegram bot bergan kodni tekshiradi va TelefonTasdiq yozuvini qaytaradi (xato bo'lsa ValidationError)."""
+    if not kod:
+        raise serializers.ValidationError({'kod': "Telegram botdan olingan kodni kiriting."})
+    tasdiq = TelefonTasdiq.objects.filter(
+        telefon=telefon,
+        maqsad=maqsad,
+        ishlatilgan=False,
+        yaratilgan__gte=timezone.now() - settings.TASDIQ_KOD_MUDDATI,
+    ).first()
+    if tasdiq is None:
+        raise serializers.ValidationError(
+            {'kod': "Bu raqam uchun amaldagi kod yo'q. Botga raqamingizni yuborib, yangi kod oling."},
+        )
+    if tasdiq.urinishlar >= settings.TASDIQ_KOD_URINISHLAR:
+        raise serializers.ValidationError({'kod': "Urinishlar tugadi. Botdan yangi kod oling."})
+    if tasdiq.kod != kod:
+        # Kodni tanlab topishning oldini olish: har bir xato urinish hisoblanadi
+        TelefonTasdiq.objects.filter(pk=tasdiq.pk).update(urinishlar=F('urinishlar') + 1)
+        raise serializers.ValidationError({'kod': "Kod noto'g'ri."})
+    return tasdiq
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     telefon = TelefonField(
         max_length=13,
@@ -43,29 +66,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError({'password': list(e.messages)}) from e
         if settings.TELEFON_TASDIQLASH:
-            attrs['tasdiq'] = self.kodni_tekshir(attrs['telefon'], attrs.get('kod', '').strip())
-        return attrs
-
-    @staticmethod
-    def kodni_tekshir(telefon, kod):
-        if not kod:
-            raise serializers.ValidationError({'kod': "Telegram botdan olingan kodni kiriting."})
-        tasdiq = TelefonTasdiq.objects.filter(
-            telefon=telefon,
-            ishlatilgan=False,
-            yaratilgan__gte=timezone.now() - settings.TASDIQ_KOD_MUDDATI,
-        ).first()
-        if tasdiq is None:
-            raise serializers.ValidationError(
-                {'kod': "Bu raqam uchun amaldagi kod yo'q. Botga raqamingizni yuborib, yangi kod oling."},
+            attrs['tasdiq'] = tasdiq_kodini_tekshir(
+                attrs['telefon'], attrs.get('kod', '').strip(), TelefonTasdiq.Maqsad.ROYXAT,
             )
-        if tasdiq.urinishlar >= settings.TASDIQ_KOD_URINISHLAR:
-            raise serializers.ValidationError({'kod': "Urinishlar tugadi. Botdan yangi kod oling."})
-        if tasdiq.kod != kod:
-            # Kodni tanlab topishning oldini olish: har bir xato urinish hisoblanadi
-            TelefonTasdiq.objects.filter(pk=tasdiq.pk).update(urinishlar=F('urinishlar') + 1)
-            raise serializers.ValidationError({'kod': "Kod noto'g'ri."})
-        return tasdiq
+        return attrs
 
     def create(self, validated_data):
         validated_data.pop('password2')
@@ -75,6 +79,32 @@ class RegisterSerializer(serializers.ModelSerializer):
         if tasdiq is not None:
             TelefonTasdiq.objects.filter(pk=tasdiq.pk).update(ishlatilgan=True)
         return user
+
+
+class ParolTiklashSerializer(serializers.Serializer):
+    """Unutilgan parolni Telegram bot bergan kod bilan yangilash."""
+
+    telefon = TelefonField(max_length=13, validators=[telefon_validator])
+    kod = serializers.CharField(max_length=6, trim_whitespace=True)
+    password = serializers.CharField(write_only=True, style={'input_type': 'password'})
+    password2 = serializers.CharField(write_only=True, style={'input_type': 'password'})
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({'password2': "Parollar mos kelmadi."})
+        user = User.objects.filter(telefon=attrs['telefon'], is_active=True).first()
+        if user is None:
+            # Bot bu raqamga tiklash kodini bermagan bo'ladi, shuning uchun xabar kod haqida
+            raise serializers.ValidationError(
+                {'kod': "Bu raqam uchun amaldagi kod yo'q. Botga raqamingizni yuborib, yangi kod oling."},
+            )
+        try:
+            validate_password(attrs['password'], user=user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'password': list(e.messages)}) from e
+        attrs['tasdiq'] = tasdiq_kodini_tekshir(attrs['telefon'], attrs['kod'], TelefonTasdiq.Maqsad.TIKLASH)
+        attrs['user'] = user
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):

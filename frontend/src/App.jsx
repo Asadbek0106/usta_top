@@ -13,6 +13,8 @@ const RoyxatdanOtish = lazy(() => import('./pages/RoyxatdanOtish'))
 const Arizalarim = lazy(() => import('./pages/Arizalarim'))
 const UstaBolish = lazy(() => import('./pages/UstaBolish'))
 const UstaProfilim = lazy(() => import('./pages/UstaProfilim'))
+const Sevimlilar = lazy(() => import('./pages/Sevimlilar'))
+const ParolTiklash = lazy(() => import('./pages/ParolTiklash'))
 const Topilmadi = lazy(() => import('./pages/Topilmadi'))
 
 export default function App() {
@@ -23,7 +25,9 @@ export default function App() {
         <Route path="ustalar/:id" element={<UstaSahifasi />} />
         <Route path="kirish" element={<Kirish />} />
         <Route path="royxatdan-otish" element={<RoyxatdanOtish />} />
+        <Route path="parol-tiklash" element={<ParolTiklash />} />
         <Route path="arizalarim" element={<Himoyalangan><Arizalarim /></Himoyalangan>} />
+        <Route path="sevimlilar" element={<Himoyalangan><Sevimlilar /></Himoyalangan>} />
         <Route path="usta-bolish" element={<Himoyalangan><UstaBolish /></Himoyalangan>} />
         <Route path="usta-profilim" element={<Himoyalangan faqatUsta><UstaProfilim /></Himoyalangan>} />
         <Route path="*" element={<Topilmadi />} />

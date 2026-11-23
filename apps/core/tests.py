@@ -7,7 +7,7 @@ from django.db.utils import OperationalError
 from django.test import TestCase, override_settings
 
 from apps.accounts.models import User
-from apps.arizalar.models import Ariza, Sharh
+from apps.arizalar.models import Ariza, ArizaTarixi, Sharh
 from apps.ustalar.models import Usta
 
 from .testing import foydalanuvchi_yarat
@@ -19,7 +19,9 @@ class DemoDataTest(TestCase):
         call_command('demo_data', stdout=StringIO())
         self.assertEqual(Usta.objects.count(), 10)
         self.assertEqual(User.objects.count(), 15)
-        self.assertEqual(Ariza.objects.count(), 30)
+        self.assertEqual(Ariza.objects.count(), 40)
+        # Har bir arizaning tarixi bor va u "yangi" holatdan boshlanadi
+        self.assertEqual(ArizaTarixi.objects.filter(eski_status='').count(), 40)
 
     @override_settings(DEBUG=True)
     def test_qayta_ishga_tushirganda_dublikat_qilmaydi(self):

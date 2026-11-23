@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { Yulduzlar } from '../components/Reyting'
 import Sahifalash from '../components/Sahifalash'
 import StatusBelgi from '../components/StatusBelgi'
+import UstaJavobi from '../components/UstaJavobi'
 import { sana, somda } from '../components/utils'
 import Yuklanmoqda, { XatoBlok } from '../components/Yuklanmoqda'
 import { useSarlavha } from '../hooks/useSarlavha'
@@ -139,6 +140,8 @@ function ArizaKartasi({ ariza, men, yangila }) {
         <div><dt>Yuborilgan</dt><dd><time dateTime={ariza.yaratilgan}>{sana(ariza.yaratilgan)}</time></dd></div>
       </dl>
 
+      {ariza.tarix?.length > 0 && <Tarix tarix={ariza.tarix} />}
+
       {xato && <p className="xabar xabar--xato" role="alert">{xato}</p>}
 
       {!tugadi && (
@@ -170,6 +173,14 @@ function ArizaKartasi({ ariza, men, yangila }) {
         <div className="ariza__sharh">
           <Yulduzlar baho={ariza.sharh.baho} />
           {ariza.sharh.matn && <p>{ariza.sharh.matn}</p>}
+          {ariza.sharh.usta_javobi && <UstaJavobi matn={ariza.sharh.usta_javobi} vaqt={ariza.sharh.javob_vaqti} />}
+          {ustamanmi && (
+            <JavobFormasi
+              arizaId={ariza.id}
+              mavjud={ariza.sharh.usta_javobi}
+              tayyor={(sharh) => yangila({ ...ariza, sharh })}
+            />
+          )}
         </div>
       )}
 
@@ -177,6 +188,77 @@ function ArizaKartasi({ ariza, men, yangila }) {
         <SharhFormasi arizaId={ariza.id} tayyor={(sharh) => yangila({ ...ariza, sharh })} />
       )}
     </li>
+  )
+}
+
+const vaqtMatni = (iso) => {
+  const d = new Date(iso)
+  const soat = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${sana(iso)}, ${soat}`
+}
+
+function Tarix({ tarix }) {
+  return (
+    <details className="tarix">
+      <summary>Ariza tarixi ({tarix.length})</summary>
+      <ol className="tarix__royxat">
+        {tarix.map((t) => (
+          <li key={t.id} className={`tarix__qadam tarix__qadam--${t.yangi_status}`}>
+            <span className="tarix__nomi">
+              {t.eski_status ? `${t.eski_status_nomi} → ${t.yangi_status_nomi}` : 'Ariza yuborildi'}
+            </span>
+            <span className="xira">
+              <time dateTime={t.vaqt}>{vaqtMatni(t.vaqt)}</time>
+              {t.kim && <> · {t.kim}</>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </details>
+  )
+}
+
+function JavobFormasi({ arizaId, mavjud, tayyor }) {
+  const [ochiq, setOchiq] = useState(false)
+  const [matn, setMatn] = useState(mavjud || '')
+  const [xato, setXato] = useState('')
+  const [band, setBand] = useState(false)
+
+  if (!ochiq) {
+    return (
+      <button type="button" className="tugma tugma--matn usta-javobi__tugma" onClick={() => setOchiq(true)}>
+        {mavjud ? 'Javobni tahrirlash' : 'Sharhga javob yozish'}
+      </button>
+    )
+  }
+
+  const yuborish = async (e) => {
+    e.preventDefault()
+    if (band) return
+    if (!matn.trim()) return setXato('Javob matnini yozing.')
+    setBand(true)
+    setXato('')
+    try {
+      tayyor(await api(`/arizalar/${arizaId}/sharh/javob/`, { method: 'POST', body: { matn: matn.trim() } }))
+      setOchiq(false)
+    } catch (err) {
+      setXato(err.message)
+    } finally {
+      setBand(false)
+    }
+  }
+
+  return (
+    <form className="javob-forma" onSubmit={yuborish}>
+      <label htmlFor={`javob-${arizaId}`}>Javobingiz (hamma ko'radi)</label>
+      <textarea id={`javob-${arizaId}`} rows={2} maxLength={2000} value={matn} onChange={(e) => setMatn(e.target.value)}
+        placeholder="Masalan: Rahmat! Yana murojaat qiling." />
+      {xato && <p className="xabar xabar--xato" role="alert">{xato}</p>}
+      <div className="javob-forma__tugmalar">
+        <button type="submit" className="tugma tugma--ikkinchi" disabled={band}>{band ? 'Saqlanmoqda…' : 'Javobni saqlash'}</button>
+        <button type="button" className="tugma tugma--matn" onClick={() => setOchiq(false)}>Bekor</button>
+      </div>
+    </form>
   )
 }
 

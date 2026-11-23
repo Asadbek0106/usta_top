@@ -1,7 +1,7 @@
 from apps.core.testing import BaseAPITestCase, ariza_yarat
 
 from . import services
-from .models import Ariza, Sharh
+from .models import Ariza, ArizaTarixi, Sharh
 
 ARIZALAR = '/api/v1/arizalar/'
 
@@ -229,7 +229,8 @@ class ArizaFiltrTest(BaseAPITestCase):
     def test_royxat_sorovlar_soni(self):
         for _ in range(10):
             ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
-        with self.assertNumQueries(2):  # COUNT + arizalar (barcha bog'lanishlar JOIN orqali)
+        # COUNT + arizalar (bog'lanishlar JOIN orqali) + tarix (prefetch): ariza soniga bog'liq emas
+        with self.assertNumQueries(3):
             self.client.get(ARIZALAR)
 
 
@@ -254,3 +255,87 @@ class ArizaQoshimchaHimoyaTest(BaseAPITestCase):
         self.assertEqual(self.client.post(ARIZALAR, self.malumot(), format='json').status_code, 429)
         # Cheklov faqat yaratishga tegishli: ro'yxatni ko'rish ishlayveradi
         self.assertEqual(self.client.get(ARIZALAR).status_code, 200)
+
+
+class ArizaTarixiTest(BaseAPITestCase):
+    def test_yaratishdan_bajarilgunicha_tarix_yoziladi(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(ARIZALAR, {'usta': self.usta.pk, 'kategoriya': self.santexnik.pk,
+                                            'tavsif': 'Kran', 'manzil': 'Chilonzor'}, format='json')
+        pk = javob.data['id']
+        self.assertEqual([t['yangi_status'] for t in javob.data['tarix']], ['yangi'])
+        self.assertIsNone(javob.data['tarix'][0]['eski_status_nomi'])
+
+        self.kirish(self.usta.user)
+        self.client.post(f'{ARIZALAR}{pk}/qabul/', {'kelishilgan_narx': '150000'}, format='json')
+        javob = self.client.post(f'{ARIZALAR}{pk}/bajarildi/')
+
+        tarix = javob.data['tarix']
+        self.assertEqual([(t['eski_status'], t['yangi_status']) for t in tarix],
+                         [('', 'yangi'), ('yangi', 'qabul'), ('qabul', 'bajarildi')])
+        self.assertEqual(tarix[1]['kim'], str(self.usta.user))
+        self.assertEqual(tarix[2]['yangi_status_nomi'], 'Bajarildi')
+
+    def test_bekor_qilganni_tarix_eslab_qoladi(self):
+        ariza = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
+        self.kirish(self.mijoz)
+        self.client.post(f'{ARIZALAR}{ariza.pk}/bekor/')
+        yozuv = ArizaTarixi.objects.get(ariza=ariza)
+        self.assertEqual((yozuv.eski_status, yozuv.yangi_status, yozuv.kim), ('yangi', 'bekor', self.mijoz))
+
+    def test_rad_etilgan_otish_tarixga_yozilmaydi(self):
+        ariza = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
+        self.kirish(self.usta.user)
+        self.assertEqual(self.client.post(f'{ARIZALAR}{ariza.pk}/bajarildi/').status_code, 400)
+        self.assertFalse(ArizaTarixi.objects.filter(ariza=ariza).exists())
+
+
+class SharhJavobTest(BaseAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.ariza = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik,
+                                 status=Ariza.Status.BAJARILDI)
+        self.url = f'{ARIZALAR}{self.ariza.pk}/sharh/javob/'
+
+    def sharh_yoz(self):
+        return Sharh.objects.create(ariza=self.ariza, baho=4, matn='Yaxshi')
+
+    def test_usta_sharhga_javob_yozadi_va_tahrirlaydi(self):
+        self.sharh_yoz()
+        self.kirish(self.usta.user)
+        javob = self.client.post(self.url, {'matn': '  Rahmat!  '}, format='json')
+        self.assertEqual(javob.status_code, 200, javob.data)
+        self.assertEqual(javob.data['usta_javobi'], 'Rahmat!')
+        self.assertIsNotNone(javob.data['javob_vaqti'])
+
+        self.client.post(self.url, {'matn': 'Katta rahmat!'}, format='json')
+        self.assertEqual(Sharh.objects.get().usta_javobi, 'Katta rahmat!')
+
+    def test_javob_ustaning_ommaviy_sahifasida_korinadi(self):
+        self.sharh_yoz()
+        services.sharhga_javob(self.ariza, matn='Rahmat!')
+        javob = self.client.get(f'/api/v1/ustalar/{self.usta.pk}/sharhlar/')
+        self.assertEqual(javob.data['results'][0]['usta_javobi'], 'Rahmat!')
+
+    def test_mijoz_va_begona_usta_javob_yoza_olmaydi(self):
+        self.sharh_yoz()
+        self.kirish(self.mijoz)
+        self.assertEqual(self.client.post(self.url, {'matn': 'x'}, format='json').status_code, 403)
+        self.kirish(self.begona_usta.user)
+        self.assertEqual(self.client.post(self.url, {'matn': 'x'}, format='json').status_code, 404)
+
+    def test_sharh_yoq_bolsa_javob_yozib_bolmaydi(self):
+        self.kirish(self.usta.user)
+        javob = self.client.post(self.url, {'matn': 'Rahmat'}, format='json')
+        self.assertEqual(javob.status_code, 400)
+        self.assertEqual(javob.data['code'], 'sharh_yoq')
+
+    def test_bosh_javob_qabul_qilinmaydi(self):
+        self.sharh_yoz()
+        self.kirish(self.usta.user)
+        self.assertEqual(self.client.post(self.url, {'matn': '   '}, format='json').status_code, 400)
+
+    def test_mijoz_sharh_yozganda_javobni_soxtalashtira_olmaydi(self):
+        self.kirish(self.mijoz)
+        self.client.post(f'{ARIZALAR}{self.ariza.pk}/sharh/', {'baho': 5, 'usta_javobi': 'soxta'}, format='json')
+        self.assertEqual(Sharh.objects.get().usta_javobi, '')

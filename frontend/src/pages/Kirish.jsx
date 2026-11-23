@@ -11,7 +11,10 @@ export default function Kirish() {
   useSarlavha('Kirish')
   const { user, kirish } = useAuth()
   const navigate = useNavigate()
-  const keyin = xavfsizManzil(useLocation().state?.keyin)
+  const location = useLocation()
+  const keyin = xavfsizManzil(location.state?.keyin)
+  // Parol tiklangandan keyin keladigan xabar
+  const [xabar] = useState(location.state?.xabar)
   const [forma, setForma] = useState({ telefon: '', password: '' })
   const [xatolar, setXatolar] = useState(null)
   const [kutilmoqda, setKutilmoqda] = useState(false)
@@ -42,6 +45,7 @@ export default function Kirish() {
   return (
     <div className="forma-sahifa">
       <h1>Kirish</h1>
+      {xabar && <p className="xabar xabar--ok" role="status">{xabar}</p>}
       <form onSubmit={yuborish} noValidate>
         <UmumiyXato xatolar={xatolar} />
         <Maydon nomi="telefon" yorliq="Telefon raqam" xatolar={xatolar}>
@@ -56,6 +60,7 @@ export default function Kirish() {
           {kutilmoqda ? 'Kirilmoqda…' : 'Kirish'}
         </button>
       </form>
+      <p><Link to="/parol-tiklash">Parolni unutdingizmi?</Link></p>
       <p>Akkauntingiz yo'qmi? <Link to="/royxatdan-otish" state={{ keyin }}>Ro'yxatdan o'ting</Link></p>
     </div>
   )

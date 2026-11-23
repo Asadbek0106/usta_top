@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
+import { useAuth } from '../auth/AuthContext'
 import Reyting from '../components/Reyting'
 import Sahifalash from '../components/Sahifalash'
+import SevimliTugma from '../components/SevimliTugma'
 import { somda, useMalumotnoma } from '../components/utils'
 import Yuklanmoqda, { XatoBlok } from '../components/Yuklanmoqda'
 import { useSarlavha } from '../hooks/useSarlavha'
@@ -11,6 +13,8 @@ import { useSorov } from '../hooks/useSorov'
 const SARALASH = [
   { qiymat: '-reyting', nomi: 'Avval reytingi yuqori' },
   { qiymat: '-sharhlar_soni', nomi: "Avval sharhi ko'p" },
+  { qiymat: 'eng_arzon', nomi: 'Avval arzonlari' },
+  { qiymat: '-tajriba_yil', nomi: 'Avval tajribalilari' },
   { qiymat: '-yaratilgan', nomi: 'Avval yangilari' },
 ]
 const NARXLAR = [100000, 200000, 300000, 500000]
@@ -19,12 +23,16 @@ const FILTR_KALITLARI = ['search', 'kategoriya', 'shahar', 'narx_max', 'reyting_
 
 export default function Katalog() {
   useSarlavha(null)
+  const { user } = useAuth()
   const [params, setParams] = useSearchParams()
   const shaharlar = useMalumotnoma('shaharlar')
   const kategoriyalar = useMalumotnoma('kategoriyalar')
   const filtr = Object.fromEntries(params)
   const sahifa = Math.max(1, Number(filtr.page) || 1)
-  const { data: natija, xato, yuklanmoqda, yangilanmoqda, qaytaYukla } = useSorov('/ustalar/', filtr)
+  const { data: natija, xato, yuklanmoqda, yangilanmoqda, qaytaYukla, ozgartir: natijaniOzgartir } = useSorov('/ustalar/', filtr)
+  const sevimliOzgardi = (id) => (qiymat) => natijaniOzgartir((n) => ({
+    ...n, results: n.results.map((u) => (u.id === id ? { ...u, sevimli: qiymat } : u)),
+  }))
 
   // Qidiruv maydoni URL bilan sinxron: "orqaga" bosilsa yoki filtr tozalansa matn ham yangilanadi
   const urlQidiruv = params.get('search') ?? ''
@@ -148,9 +156,15 @@ export default function Katalog() {
                   <Link to={`/ustalar/${u.id}`} className="usta-qator__havola">
                     <span className="usta-qator__ism">{u.ism || 'Ismsiz usta'}</span>
                     <span className="usta-qator__ish">{u.kategoriyalar.join(', ')}</span>
-                    <span className="usta-qator__shahar">{u.shahar}</span>
+                    <span className="usta-qator__shahar">
+                      {u.shahar}
+                      {u.eng_arzon !== null && <span className="usta-qator__narx">{somda(u.eng_arzon)} dan</span>}
+                    </span>
                   </Link>
                   <Reyting qiymat={u.reyting} soni={u.sharhlar_soni} />
+                  {user && (
+                    <SevimliTugma ixcham ustaId={u.id} sevimli={u.sevimli} ozgardi={sevimliOzgardi(u.id)} />
+                  )}
                 </li>
               ))}
             </ol>

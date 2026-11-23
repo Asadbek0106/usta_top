@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.db import models
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, OuterRef, Subquery
 from django.db.models.functions import Round
 
 from apps.core.models import TimeStampedModel
@@ -40,6 +40,14 @@ class UstaQuerySet(models.QuerySet):
         return self.annotate(
             reyting=Round(Avg('arizalar__sharh__baho'), 1),
             sharhlar_soni=Count('arizalar__sharh', distinct=True),
+        )
+
+    def narx_bilan(self):
+        # Subquery: Count/Avg bilan bitta so'rovda JOIN qilinsa qatorlar ko'payib ketadi
+        xizmatlar = Xizmat.objects.filter(usta=OuterRef('pk'))
+        return self.annotate(
+            eng_arzon=Subquery(xizmatlar.order_by('narx_dan').values('narx_dan')[:1]),
+            tajriba_yil=Subquery(xizmatlar.order_by('-tajriba').values('tajriba')[:1]),
         )
 
 
@@ -85,3 +93,26 @@ class Xizmat(models.Model):
 
     def __str__(self):
         return f"{self.usta} — {self.kategoriya}"
+
+
+class Sevimli(models.Model):
+    """Mijoz keyinroq qayta topish uchun saqlab qo'ygan usta."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sevimli_ustalar',
+    )
+    usta = models.ForeignKey(Usta, on_delete=models.CASCADE, related_name='sevimlilar')
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Sevimli usta"
+        verbose_name_plural = "Sevimli ustalar"
+        ordering = ['-yaratilgan']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'usta'], name='sevimli_unique'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} ♥ {self.usta}"

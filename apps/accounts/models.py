@@ -32,10 +32,15 @@ class TelefonTasdiq(models.Model):
     """Telegram bot bergan bir martalik kod: foydalanuvchi raqam haqiqatan uniki ekanini shu bilan isbotlaydi.
 
     Bot foydalanuvchidan Telegram kontaktini oladi (Telegram raqamni o'zi tasdiqlagan bo'ladi),
-    shu raqam uchun kod yaratadi. Saytda ro'yxatdan o'tishda kod tekshiriladi.
+    shu raqam uchun kod yaratadi. Saytda ro'yxatdan o'tishda (yoki parolni tiklashda) kod tekshiriladi.
     """
 
+    class Maqsad(models.TextChoices):
+        ROYXAT = 'royxat', "Ro'yxatdan o'tish"
+        TIKLASH = 'tiklash', "Parolni tiklash"
+
     telefon = models.CharField("Telefon raqam", max_length=13, db_index=True)
+    maqsad = models.CharField("Maqsad", max_length=10, choices=Maqsad.choices, default=Maqsad.ROYXAT)
     kod = models.CharField("Kod", max_length=6)
     chat_id = models.BigIntegerField("Telegram chat ID")
     urinishlar = models.PositiveSmallIntegerField("Noto'g'ri urinishlar", default=0)

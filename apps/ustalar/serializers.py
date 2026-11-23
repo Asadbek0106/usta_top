@@ -53,10 +53,16 @@ class UstaListSerializer(serializers.ModelSerializer):
     kategoriyalar = serializers.StringRelatedField(many=True)
     reyting = serializers.FloatField(read_only=True)
     sharhlar_soni = serializers.IntegerField(read_only=True)
+    eng_arzon = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, default=None,
+                                         help_text="Ustaning eng arzon xizmati qaysi narxdan boshlanadi")
+    tajriba_yil = serializers.IntegerField(read_only=True, default=None, help_text="Eng katta tajriba, yil")
+    # Kirgan foydalanuvchi shu ustani saqlab qo'yganmi (mehmon uchun doim false)
+    sevimli = serializers.BooleanField(read_only=True, default=False)
 
     class Meta:
         model = Usta
-        fields = ('id', 'ism', 'shahar', 'kategoriyalar', 'reyting', 'sharhlar_soni')
+        fields = ('id', 'ism', 'shahar', 'kategoriyalar', 'reyting', 'sharhlar_soni',
+                  'eng_arzon', 'tajriba_yil', 'sevimli')
 
 
 class UstaDetailSerializer(UstaListSerializer):
@@ -66,7 +72,7 @@ class UstaDetailSerializer(UstaListSerializer):
 
     class Meta(UstaListSerializer.Meta):
         fields = ('id', 'ism', 'telefon', 'shahar', 'tavsif', 'xizmatlar',
-                  'reyting', 'sharhlar_soni', 'yaratilgan')
+                  'reyting', 'sharhlar_soni', 'sevimli', 'yaratilgan')
 
 
 class UstaCreateSerializer(serializers.ModelSerializer):
@@ -97,9 +103,44 @@ class UstaCreateSerializer(serializers.ModelSerializer):
         Xizmat.objects.bulk_create([Xizmat(usta=usta, **x) for x in xizmatlar])
         return usta
 
+
 class UstaUpdateSerializer(serializers.ModelSerializer):
     """Usta o'z profilini tahrirlashi uchun. `tasdiqlangan` ataylab kiritilmagan."""
 
     class Meta:
         model = Usta
         fields = ('shahar', 'tavsif')
+
+
+class OyStatistikaSerializer(serializers.Serializer):
+    oy = serializers.CharField(help_text="YYYY-MM")
+    nomi = serializers.CharField()
+    arizalar = serializers.IntegerField()
+    bajarildi = serializers.IntegerField()
+    daromad = serializers.IntegerField()
+
+
+class ShuOyStatistikaSerializer(serializers.Serializer):
+    arizalar = serializers.IntegerField()
+    bajarildi = serializers.IntegerField()
+    daromad = serializers.IntegerField()
+
+
+class KategoriyaStatistikaSerializer(serializers.Serializer):
+    nomi = serializers.CharField()
+    soni = serializers.IntegerField()
+
+
+class UstaStatistikaSerializer(serializers.Serializer):
+    """Faqat hujjat (Swagger) uchun: javob services.usta_statistikasi() dan tayyor holda keladi."""
+
+    jami_arizalar = serializers.IntegerField()
+    holatlar = serializers.DictField(child=serializers.IntegerField())
+    daromad = serializers.IntegerField(help_text="Bajarilgan arizalarning kelishilgan narxlari yig'indisi, so'm")
+    bajarish_foizi = serializers.IntegerField(allow_null=True)
+    shu_oy = ShuOyStatistikaSerializer()
+    oylar = OyStatistikaSerializer(many=True)
+    reyting = serializers.FloatField(allow_null=True)
+    sharhlar_soni = serializers.IntegerField()
+    baholar = serializers.DictField(child=serializers.IntegerField())
+    kategoriyalar = KategoriyaStatistikaSerializer(many=True)

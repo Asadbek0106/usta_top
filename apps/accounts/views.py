@@ -2,16 +2,19 @@ import hmac
 import logging
 
 from django.conf import settings
+from django.db import transaction
 from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from .models import TelefonTasdiq
+from .serializers import LoginSerializer, ParolTiklashSerializer, RegisterSerializer, UserSerializer
 from .telegram import update_ni_qayta_ishla, webhook_maxfiy_kalit
 
 logger = logging.getLogger(__name__)
@@ -59,6 +62,37 @@ class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'auth'
+
+
+class ParolTiklashView(APIView):
+    """Unutilgan parolni tiklash: Telegram botga raqam yuboriladi, bot bergan kod bilan yangi parol o'rnatiladi."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth'
+
+    @extend_schema(
+        request=ParolTiklashSerializer,
+        responses=inline_serializer(name='ParolTiklashJavob', fields={'detail': serializers.CharField()}),
+    )
+    def post(self, request):
+        if not settings.TELEGRAM_BOT_TOKEN:
+            return Response(
+                {'detail': "Parolni tiklash hozircha ishlamaydi: Telegram bot sozlanmagan."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        serializer = ParolTiklashSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        with transaction.atomic():
+            user.set_password(serializer.validated_data['password'])
+            user.save(update_fields=['password'])
+            TelefonTasdiq.objects.filter(pk=serializer.validated_data['tasdiq'].pk).update(ishlatilgan=True)
+            # Parol o'g'irlangan bo'lishi mumkin: boshqa qurilmalardagi barcha sessiyalar yopiladi
+            for token in OutstandingToken.objects.filter(user=user).exclude(blacklistedtoken__isnull=False):
+                BlacklistedToken.objects.get_or_create(token=token)
+        return Response({'detail': "Parol yangilandi. Endi yangi parol bilan kiring."})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

@@ -4,7 +4,7 @@ const BASE = '/api/v1'
 export const KALITLAR = { access: 'usta.access', refresh: 'usta.refresh' }
 
 // Token talab qilmaydigan va eskirgan token yuborilsa 401 qaytaradigan manzillar
-const OCHIQ_YOLLAR = ['/auth/login/', '/auth/register/', '/auth/refresh/', '/auth/logout/']
+const OCHIQ_YOLLAR = ['/auth/login/', '/auth/register/', '/auth/refresh/', '/auth/logout/', '/auth/parol-tiklash/']
 
 export const tokenlar = {
   get access() { return localStorage.getItem(KALITLAR.access) },

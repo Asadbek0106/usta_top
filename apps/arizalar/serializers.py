@@ -3,13 +3,32 @@ from rest_framework import serializers
 
 from apps.ustalar.models import Kategoriya, Usta
 
-from .models import Ariza, Sharh
+from . import services
+from .models import Ariza, ArizaTarixi, Sharh
 
 
 class SharhSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sharh
-        fields = ('id', 'baho', 'matn', 'yaratilgan')
+        fields = ('id', 'baho', 'matn', 'usta_javobi', 'javob_vaqti', 'yaratilgan')
+        read_only_fields = ('usta_javobi', 'javob_vaqti')
+
+
+class SharhJavobSerializer(serializers.Serializer):
+    matn = serializers.CharField(max_length=2000, trim_whitespace=True)
+
+
+class ArizaTarixiSerializer(serializers.ModelSerializer):
+    eski_status_nomi = serializers.SerializerMethodField()
+    yangi_status_nomi = serializers.CharField(source='get_yangi_status_display', read_only=True)
+    kim = serializers.StringRelatedField()
+
+    class Meta:
+        model = ArizaTarixi
+        fields = ('id', 'eski_status', 'eski_status_nomi', 'yangi_status', 'yangi_status_nomi', 'kim', 'vaqt')
+
+    def get_eski_status_nomi(self, obj) -> str | None:
+        return obj.get_eski_status_display() if obj.eski_status else None
 
 
 class UstaQisqaSerializer(serializers.ModelSerializer):
@@ -27,11 +46,12 @@ class ArizaSerializer(serializers.ModelSerializer):
     kategoriya = serializers.StringRelatedField()
     status_nomi = serializers.CharField(source='get_status_display', read_only=True)
     sharh = SharhSerializer(read_only=True)
+    tarix = ArizaTarixiSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ariza
         fields = ('id', 'mijoz', 'usta', 'kategoriya', 'tavsif', 'manzil',
-                  'status', 'status_nomi', 'kelishilgan_narx', 'sharh', 'yaratilgan')
+                  'status', 'status_nomi', 'kelishilgan_narx', 'sharh', 'tarix', 'yaratilgan')
 
 
 class ArizaCreateSerializer(serializers.ModelSerializer):
@@ -49,6 +69,9 @@ class ArizaCreateSerializer(serializers.ModelSerializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError(serializers.as_serializer_error(e)) from e
         return attrs
+
+    def create(self, validated_data):
+        return services.ariza_yaratish(**validated_data)
 
 
 class ArizaUpdateSerializer(serializers.ModelSerializer):

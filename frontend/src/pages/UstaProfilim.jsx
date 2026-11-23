@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { api, formaXatolari } from '../api/client'
 import Maydon, { UmumiyXato } from '../components/Maydon'
 import Reyting from '../components/Reyting'
+import Statistika from '../components/Statistika'
 import { somda, useMalumotnoma } from '../components/utils'
 import Yuklanmoqda, { XatoBlok } from '../components/Yuklanmoqda'
 import { useSarlavha } from '../hooks/useSarlavha'
@@ -36,6 +37,8 @@ export default function UstaProfilim() {
           {yangi ? 'Profil yaratildi. ' : ''}Admin tekshirgandan keyin profilingiz katalogda ko'rinadi.
         </p>
       )}
+
+      <Statistika />
 
       <div className="profil__ustunlar">
         {/* key: profil qayta yuklansa forma ham yangi qiymatlar bilan boshlanadi */}
