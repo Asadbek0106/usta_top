@@ -58,6 +58,20 @@ class AdminFormTest(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['telefon'], '+998901234567')
 
+    def test_admin_formasida_ism_familiya_saqlanadi(self):
+        form = UserCreateForm(data={
+            'telefon': '+998901234567',
+            'first_name': 'Ali',
+            'last_name': 'Valiyev',
+            'usable_password': 'true',
+            'password1': PAROL,
+            'password2': PAROL,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        user = form.save()
+        self.assertEqual((user.first_name, user.last_name), ('Ali', 'Valiyev'))
+        self.assertTrue(user.check_password(PAROL))
+
 
 class RegisterTest(APITestCase):
     def setUp(self):

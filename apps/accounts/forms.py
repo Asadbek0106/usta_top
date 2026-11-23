@@ -17,7 +17,7 @@ class UserCreateForm(TelefonTozalashMixin, AdminUserCreationForm):
 
     class Meta:
         model = User
-        fields = ('telefon',)
+        fields = ('telefon', 'first_name', 'last_name')
 
 
 class UserEditForm(TelefonTozalashMixin, UserChangeForm):
