@@ -1,5 +1,6 @@
 from django import forms
-from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
+from unfold.forms import UserChangeForm, UserCreationForm
+from unfold.widgets import UnfoldAdminTextInputWidget
 
 from .models import User
 
@@ -11,9 +12,9 @@ class TelefonTozalashMixin:
         return User.objects.normalize_telefon(self.cleaned_data['telefon'])
 
 
-class UserCreateForm(TelefonTozalashMixin, AdminUserCreationForm):
+class UserCreateForm(TelefonTozalashMixin, UserCreationForm):
     # Tozalashdan oldin "+998 90 123-45-67" (17 belgi) ham qabul qilinishi uchun
-    telefon = forms.CharField(label="Telefon raqam", max_length=20)
+    telefon = forms.CharField(label="Telefon raqam", max_length=20, widget=UnfoldAdminTextInputWidget)
 
     class Meta:
         model = User
@@ -21,7 +22,7 @@ class UserCreateForm(TelefonTozalashMixin, AdminUserCreationForm):
 
 
 class UserEditForm(TelefonTozalashMixin, UserChangeForm):
-    telefon = forms.CharField(label="Telefon raqam", max_length=20)
+    telefon = forms.CharField(label="Telefon raqam", max_length=20, widget=UnfoldAdminTextInputWidget)
 
     class Meta:
         model = User

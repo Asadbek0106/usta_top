@@ -22,6 +22,7 @@ Telefon raqam Telegram bot orqali tasdiqlanadi. Loyiha Docker'da ishlaydi, GitHu
 | Sozlamalar | `django-environ` (`.env` fayli, 12-Factor) |
 | Testlar | `pytest`, `pytest-django`, `pytest-cov`; linter `ruff` |
 | Baza | SQLite (development), PostgreSQL (Docker va production, `DATABASE_URL` orqali) |
+| Admin panel | `django-unfold` (zamonaviy mavzu, dashboard, o'zbekcha interfeys) |
 | Frontend | React 19, Vite 8, React Router 7 |
 | Infratuzilma | Docker, Docker Compose, GitHub Actions (CI/CD), Render (Blueprint) |
 
@@ -44,7 +45,13 @@ Telefon raqam Telegram bot orqali tasdiqlanadi. Loyiha Docker'da ishlaydi, GitHu
 
 **Admin uchun**
 
-- **Admin panel**: ustalarni tasdiqlash (moderatsiya), inline xizmatlar, ariza tarixi (faqat o'qish uchun), sevimlilar, tasdiqlash kodlari, qidiruv va filtrlar.
+- **Admin panel** (`/admin/`, `django-unfold` asosida):
+  - **Dashboard**: foydalanuvchilar, ustalar, arizalar soni va bajarilgan ishlar aylanmasi; oxirgi 12 hafta grafigi; arizalar holati; tasdiq kutayotgan ustalar va oxirgi arizalar.
+  - **Yon menyu**: bo'limlar ikonkalar bilan. Tasdiq kutayotgan ustalar va yangi arizalar soni menyuda belgi bo'lib ko'rinadi.
+  - **Ro'yxatlar**: holatlar rangli belgilar bilan, qidiruv va filtrlar.
+  - **Usta sahifasi**: bitta tugma bilan "Tasdiqlash"; ro'yxatdan bir nechta ustani birdaniga tasdiqlash ham mumkin.
+  - **Ariza sahifasi**: alohida tablarda tarix (faqat o'qish uchun) va sharh.
+  - **Interfeys**: o'zbek tilida (`locale/uz/`), tungi rejimni qo'llab-quvvatlaydi.
 
 ## Loyiha tuzilmasi
 
@@ -59,10 +66,13 @@ usta/
 │   ├── urls.py            # admin, Swagger, /health/, /api/v1/
 │   └── api_v1.py          # API'ning 1-versiyasi URL'lari
 ├── apps/
-│   ├── core/              # TimeStampedModel, xatolar, pagination, filtrlar, demo_data, ensure_superuser
+│   ├── core/              # TimeStampedModel, xatolar, pagination, filtrlar, demo_data, ensure_superuser,
+│   │                      # admin dashboard ma'lumotlari (admin_panel.py)
 │   ├── accounts/          # custom User (telefon), JWT, Telegram bot, parolni tiklash
 │   ├── ustalar/           # Shahar, Kategoriya, Usta, Xizmat, Sevimli; statistika (services.py)
 │   └── arizalar/          # Ariza, ArizaTarixi, Sharh; holat o'tishlari (services.py)
+├── templates/admin/       # admin dashboard shabloni (index.html)
+├── locale/uz/             # admin panel matnlarining o'zbekcha tarjimasi
 ├── frontend/              # React ilovasi (alohida README)
 ├── requirements/
 │   ├── base.txt           # ishlab chiqarish uchun paketlar

@@ -1,0 +1,373 @@
+# Admin panel (Django va django-unfold) uchun o'zbekcha tarjimalar.
+# Django'ning o'z o'zbekcha tarjimasida yo'q yoki unfold qo'shgan matnlar shu yerda.
+# O'zgartirgandan keyin: python manage.py compilemessages (gettext kerak) yoki pybabel compile.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: uz\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Site administration"
+msgstr "Boshqaruv paneli"
+
+msgid "Welcome back to"
+msgstr "Xush kelibsiz,"
+
+msgid "Log in"
+msgstr "Kirish"
+
+msgid "Log in again"
+msgstr "Qaytadan kirish"
+
+msgid "Log out"
+msgstr "Chiqish"
+
+msgid "Return to site"
+msgstr "Saytga qaytish"
+
+msgid "View site"
+msgstr "Saytni ochish"
+
+msgid "Search apps and models..."
+msgstr "Bo'lim yoki model qidirish..."
+
+msgid "Type to search"
+msgstr "Qidirish uchun yozing"
+
+msgid "Filters"
+msgstr "Filtrlar"
+
+msgid "Apply Filters"
+msgstr "Filtrlarni qo'llash"
+
+msgid "Reset filters"
+msgstr "Filtrlarni tozalash"
+
+msgid "Clear all filters"
+msgstr "Barcha filtrlarni tozalash"
+
+msgid "Toggle filter"
+msgstr "Filtrni yoqish/o'chirish"
+
+msgid "General"
+msgstr "Asosiy"
+
+msgid "History"
+msgstr "Tarix"
+
+msgid "Home"
+msgstr "Bosh sahifa"
+
+msgid "Save"
+msgstr "Saqlash"
+
+msgid "Save as new"
+msgstr "Yangi sifatida saqlash"
+
+msgid "Save and view"
+msgstr "Saqlash va ko'rish"
+
+msgid "Save and continue editing"
+msgstr "Saqlash va tahrirlashda davom etish"
+
+msgid "Save and add another"
+msgstr "Saqlash va yana qo'shish"
+
+msgid "Delete"
+msgstr "O'chirish"
+
+msgid "Cancel"
+msgstr "Bekor qilish"
+
+msgid "Close"
+msgstr "Yopish"
+
+msgid "Add"
+msgstr "Qo'shish"
+
+msgid "Add row"
+msgstr "Qator qo'shish"
+
+msgid "Change"
+msgstr "O'zgartirish"
+
+msgid "View"
+msgstr "Ko'rish"
+
+msgid "Run"
+msgstr "Bajarish"
+
+msgid "Run the selected action"
+msgstr "Tanlangan amalni bajarish"
+
+msgid "Select action"
+msgstr "Amalni tanlang"
+
+msgid "Select action to run"
+msgstr "Bajariladigan amalni tanlang"
+
+msgid "Clear selection"
+msgstr "Tanlovni bekor qilish"
+
+msgid "Show all"
+msgstr "Hammasini ko'rsatish"
+
+msgid "Show counts"
+msgstr "Sonlarini ko'rsatish"
+
+msgid "Hide counts"
+msgstr "Sonlarini yashirish"
+
+msgid "Previous"
+msgstr "Oldingi"
+
+msgid "Next"
+msgstr "Keyingi"
+
+msgid "No results found"
+msgstr "Hech narsa topilmadi"
+
+msgid "Nothing matched your search"
+msgstr "Qidiruvga mos natija yo'q"
+
+msgid "This page yielded into no results."
+msgstr "Bu sahifada natija yo'q."
+
+msgid "No data"
+msgstr "Ma'lumot yo'q"
+
+msgid "Recent actions"
+msgstr "Oxirgi amallar"
+
+msgid "Recent searches"
+msgstr "Oxirgi qidiruvlar"
+
+msgid "Change password"
+msgstr "Parolni o'zgartirish"
+
+msgid "Your password was changed."
+msgstr "Parolingiz o'zgartirildi."
+
+msgid "Forgotten your password or username?"
+msgstr "Parol yoki loginni unutdingizmi?"
+
+msgid "Dark"
+msgstr "Tungi"
+
+msgid "Light"
+msgstr "Kunduzgi"
+
+msgid "System"
+msgstr "Tizim bo'yicha"
+
+msgid "Toggle dark/light mode"
+msgstr "Tungi/kunduzgi rejim"
+
+msgid "Toggle sidebar"
+msgstr "Yon panelni yashirish/ochish"
+
+msgid "Toggle sorting"
+msgstr "Saralashni almashtirish"
+
+msgid "Remove from sorting"
+msgstr "Saralashdan olib tashlash"
+
+msgid "Toggle password visibility"
+msgstr "Parolni ko'rsatish/yashirish"
+
+msgid "Yes, I’m sure"
+msgstr "Ha, ishonchim komil"
+
+msgid "No, take me back"
+msgstr "Yo'q, orqaga qaytish"
+
+msgid "Summary"
+msgstr "Xulosa"
+
+msgid "Objects"
+msgstr "Obyektlar"
+
+msgid "Date/time"
+msgstr "Sana/vaqt"
+
+msgid "User"
+msgstr "Foydalanuvchi"
+
+msgid "Action"
+msgstr "Amal"
+
+msgid "Unknown"
+msgstr "Noma'lum"
+
+msgid "True"
+msgstr "Ha"
+
+msgid "False"
+msgstr "Yo'q"
+
+msgid "All applications"
+msgstr "Barcha bo'limlar"
+
+msgid "Choose file to upload"
+msgstr "Yuklash uchun fayl tanlang"
+
+msgid "Go back"
+msgstr "Orqaga"
+
+msgid "Create new record"
+msgstr "Yangi yozuv yaratish"
+
+msgid "Submit"
+msgstr "Yuborish"
+
+msgid "Select"
+msgstr "Tanlash"
+
+msgid "After you’ve created a user, you’ll be able to edit more user options."
+msgstr "Foydalanuvchi yaratilgandan keyin qolgan sozlamalarini tahrirlash mumkin bo'ladi."
+
+msgid "After you've created a user, you’ll be able to edit more user options."
+msgstr "Foydalanuvchi yaratilgandan keyin qolgan sozlamalarini tahrirlash mumkin bo'ladi."
+
+msgid "first name"
+msgstr "ism"
+
+msgid "last name"
+msgstr "familiya"
+
+msgid "email address"
+msgstr "email manzil"
+
+msgid "user"
+msgstr "foydalanuvchi"
+
+msgid "users"
+msgstr "foydalanuvchilar"
+
+msgid "groups"
+msgstr "guruhlar"
+
+msgid "user permissions"
+msgstr "foydalanuvchi ruxsatlari"
+
+msgid "superuser status"
+msgstr "superadmin"
+
+msgid "staff status"
+msgstr "xodim"
+
+msgid "active"
+msgstr "faol"
+
+msgid "date joined"
+msgstr "ro'yxatdan o'tgan sana"
+
+msgid "last login"
+msgstr "oxirgi kirish"
+
+msgid "password"
+msgstr "parol"
+
+msgid "Password"
+msgstr "Parol"
+
+msgid "Password confirmation"
+msgstr "Parolni tasdiqlash"
+
+msgid "Password-based authentication"
+msgstr "Parol bilan kirish"
+
+msgid "Enabled"
+msgstr "Yoqilgan"
+
+msgid "Disabled"
+msgstr "O'chirilgan"
+
+msgid "Whether the user will be able to authenticate using a password or not. If disabled, they may still be able to authenticate using other backends, such as Single Sign-On or LDAP."
+msgstr "Foydalanuvchi parol bilan tizimga kira oladimi yoki yo'q."
+
+msgid "Enter the same password as before, for verification."
+msgstr "Tekshirish uchun parolni qaytadan kiriting."
+
+msgid "The two password fields didn’t match."
+msgstr "Parollar mos kelmadi."
+
+msgid "Raw passwords are not stored, so there is no way to see the user’s password."
+msgstr "Parollar ochiq holda saqlanmaydi, shuning uchun foydalanuvchi parolini ko'rib bo'lmaydi."
+
+msgid "Enable password-based authentication for this user by setting a password."
+msgstr "Parol o'rnatib, bu foydalanuvchiga parol bilan kirishga ruxsat bering."
+
+msgid "Please enter a correct %(username)s and password. Note that both fields may be case-sensitive."
+msgstr "To'g'ri %(username)s va parolni kiriting."
+
+msgid "New password"
+msgstr "Yangi parol"
+
+msgid "New password confirmation"
+msgstr "Yangi parolni tasdiqlash"
+
+msgid "Old password"
+msgstr "Eski parol"
+
+msgid "Reset password"
+msgstr "Parolni tiklash"
+
+msgid "Set password"
+msgstr "Parol o'rnatish"
+
+msgid "Your old password was entered incorrectly. Please enter it again."
+msgstr "Eski parol noto'g'ri kiritildi. Qaytadan kiriting."
+
+msgid "Designates that this user has all permissions without explicitly assigning them."
+msgstr "Bu foydalanuvchi barcha ruxsatlarga ega bo'ladi."
+
+msgid "The groups this user belongs to. A user will get all permissions granted to each of their groups."
+msgstr "Foydalanuvchi a'zo bo'lgan guruhlar. Har bir guruhning ruxsatlari unga ham beriladi."
+
+msgid "Designates whether the user can log into this admin site."
+msgstr "Foydalanuvchi admin panelga kira oladimi."
+
+msgid "Designates whether this user should be treated as active. Unselect this instead of deleting accounts."
+msgstr "Foydalanuvchi faolmi. Akkauntni o'chirish o'rniga shu belgini olib tashlang."
+
+msgid "Specific permissions for this user."
+msgstr "Shu foydalanuvchiga alohida berilgan ruxsatlar."
+
+msgid "Personal info"
+msgstr "Shaxsiy ma'lumotlar"
+
+msgid "Permissions"
+msgstr "Ruxsatlar"
+
+msgid "Important dates"
+msgstr "Muhim sanalar"
+
+msgid "The password is too similar to the %(verbose_name)s."
+msgstr "Parol %(verbose_name)s ga juda o'xshash."
+
+msgid "Your password can’t be too similar to your other personal information."
+msgstr "Parol shaxsiy ma'lumotlaringizga o'xshamasin."
+
+msgid "This password is too common."
+msgstr "Bu parol juda oddiy."
+
+msgid "Your password can’t be a commonly used password."
+msgstr "Parol keng tarqalgan oddiy parol bo'lmasin."
+
+msgid "This password is entirely numeric."
+msgstr "Parol faqat raqamlardan iborat."
+
+msgid "Your password can’t be entirely numeric."
+msgstr "Parol faqat raqamlardan iborat bo'lmasin."
+
+msgid "No password set."
+msgstr "Parol o'rnatilmagan."
+
+msgid "This password is too short. It must contain at least %d character."
+msgid_plural "This password is too short. It must contain at least %d characters."
+msgstr[0] "Parol juda qisqa. U kamida %d ta belgidan iborat bo'lishi kerak."
+
+msgid "Your password must contain at least %(min_length)d character."
+msgid_plural "Your password must contain at least %(min_length)d characters."
+msgstr[0] "Parol kamida %(min_length)d ta belgidan iborat bo'lsin."

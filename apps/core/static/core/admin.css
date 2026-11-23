@@ -1,0 +1,241 @@
+/* Usta admin panelining qo'shimcha uslublari (django-unfold ustiga).
+   Ranglar unfold'ning CSS o'zgaruvchilaridan olinadi, shuning uchun tungi rejimda ham to'g'ri ko'rinadi. */
+
+.usta-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.usta-dashboard__salom p {
+  margin-top: 0.25rem;
+}
+
+/* ---------- Asosiy ko'rsatkichlar ---------- */
+
+.usta-dashboard__kartalar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.usta-karta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1.25rem 1.5rem;
+  background: #fff;
+  border: 1px solid var(--color-base-200);
+  border-radius: var(--border-radius, 8px);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.usta-karta:hover {
+  border-color: var(--color-primary-300);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.06);
+}
+
+.usta-karta__ikon {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 8px;
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  font-size: 1.25rem;
+}
+
+.usta-karta__nomi {
+  font-size: 0.8rem;
+  color: var(--color-base-500);
+  padding-right: 2.75rem;
+}
+
+.usta-karta__qiymat {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-base-900);
+  white-space: nowrap;
+}
+
+.usta-karta__izoh {
+  font-size: 0.8rem;
+  color: var(--color-base-500);
+}
+
+/* ---------- Kartalar qatori ---------- */
+
+.usta-dashboard__qator {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.usta-dashboard__qator--grafik {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .usta-dashboard__qator,
+  .usta-dashboard__qator--grafik {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- Ariza holatlari ---------- */
+
+.usta-holatlar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.usta-holatlar__qator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.usta-holatlar__soni {
+  font-weight: 600;
+  color: var(--color-base-900);
+}
+
+.usta-holatlar__chiziq {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-base-100);
+  overflow: hidden;
+}
+
+.usta-holatlar__ulush {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-base-400);
+}
+
+.usta-holatlar__ulush--yangi { background: #3b82f6; }
+.usta-holatlar__ulush--qabul { background: #f59e0b; }
+.usta-holatlar__ulush--bajarildi { background: #16a34a; }
+
+.usta-reyting {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-base-200);
+}
+
+.usta-reyting .material-symbols-outlined {
+  color: #d9a900;
+  font-variation-settings: 'FILL' 1;
+}
+
+/* ---------- Ro'yxatlar ---------- */
+
+.usta-royxat li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--color-base-200);
+}
+
+.usta-royxat li:first-child {
+  padding-top: 0;
+}
+
+.usta-royxat li:last-child {
+  border-bottom: 0;
+}
+
+.usta-royxat a {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--color-base-700);
+}
+
+.usta-royxat a:hover b {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+}
+
+.usta-royxat a span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usta-royxat__ong {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.usta-havola {
+  display: inline-block;
+  margin-top: 1rem;
+  font-weight: 600;
+  color: var(--color-primary-700);
+}
+
+.usta-havola:hover {
+  text-decoration: underline;
+}
+
+.usta-bosh {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-base-500);
+}
+
+/* ---------- Tungi rejim ---------- */
+
+.dark .usta-karta {
+  background: var(--color-base-900);
+  border-color: var(--color-base-800);
+}
+
+.dark .usta-karta__qiymat,
+.dark .usta-holatlar__soni {
+  color: var(--color-base-100);
+}
+
+.dark .usta-karta__ikon {
+  background: rgb(255 255 255 / 0.06);
+  color: var(--color-primary-300);
+}
+
+.dark .usta-holatlar__chiziq {
+  background: var(--color-base-800);
+}
+
+.dark .usta-royxat li,
+.dark .usta-reyting {
+  border-color: var(--color-base-800);
+}
+
+.dark .usta-royxat a {
+  color: var(--color-base-300);
+}
+
+.dark .usta-havola {
+  color: var(--color-primary-300);
+}

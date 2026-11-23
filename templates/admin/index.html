@@ -1,0 +1,122 @@
+{% extends 'admin/base.html' %}
+{% load i18n unfold %}
+
+{% comment %}
+  Admin bosh sahifasi (dashboard). Ma'lumotlar apps/core/admin_panel.py → dashboard() dan keladi.
+{% endcomment %}
+
+{% block title %}Dashboard | {{ site_title }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="usta-dashboard">
+    <div class="usta-dashboard__salom">
+        <h1 class="font-semibold text-2xl text-important tracking-tight">
+            Assalomu alaykum{% if request.user.first_name %}, {{ request.user.first_name }}{% endif %}!
+        </h1>
+        <p class="text-subtle">Platformadagi umumiy holat va bajarilishi kerak bo'lgan ishlar.</p>
+    </div>
+
+    <div class="usta-dashboard__kartalar">
+        {% for k in kartalar %}
+            <a href="{{ k.havola }}" class="usta-karta">
+                <span class="usta-karta__ikon material-symbols-outlined">{{ k.ikon }}</span>
+                <span class="usta-karta__nomi">{{ k.nomi }}</span>
+                <span class="usta-karta__qiymat">{{ k.qiymat }}</span>
+                <span class="usta-karta__izoh">{{ k.izoh }}</span>
+            </a>
+        {% endfor %}
+    </div>
+
+    <div class="usta-dashboard__qator usta-dashboard__qator--grafik">
+        {% component "unfold/components/card.html" with title=grafik_sarlavha %}
+            {% component "unfold/components/chart/bar.html" with data=grafik height=260 %}{% endcomponent %}
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" with title="Arizalar holati" %}
+            <ul class="usta-holatlar">
+                {% for h in holatlar %}
+                    <li>
+                        <a href="{% url 'admin:arizalar_ariza_changelist' %}?status__exact={{ h.status }}" class="usta-holatlar__qator">
+                            {% component "unfold/helpers/label.html" with variant=h.rang text=h.nomi %}{% endcomponent %}
+                            <span class="usta-holatlar__soni">{{ h.soni }}</span>
+                        </a>
+                        <span class="usta-holatlar__chiziq">
+                            <span class="usta-holatlar__ulush usta-holatlar__ulush--{{ h.status }}"
+                                  style="width: {% if holatlar_jami %}{% widthratio h.soni holatlar_jami 100 %}{% else %}0{% endif %}%"></span>
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+            <p class="usta-reyting">
+                <span class="material-symbols-outlined">star</span>
+                {% if reyting %}
+                    O'rtacha baho: <b>{{ reyting }}</b> <span class="text-subtle">({{ sharhlar_soni }} ta sharh)</span>
+                {% else %}
+                    <span class="text-subtle">Hali sharh yo'q</span>
+                {% endif %}
+            </p>
+        {% endcomponent %}
+    </div>
+
+    <div class="usta-dashboard__qator">
+        {% component "unfold/components/card.html" with title="Tasdiq kutayotgan ustalar" %}
+            {% if kutayotganlar %}
+                <ul class="usta-royxat">
+                    {% for u in kutayotganlar %}
+                        <li>
+                            <a href="{% url 'admin:ustalar_usta_change' u.pk %}">
+                                <b>{{ u.user.get_full_name|default:u.user.telefon }}</b>
+                                <span class="text-subtle">
+                                    {{ u.shahar }} · {% for k in u.kategoriyalar.all %}{{ k }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                </span>
+                            </a>
+                            <span class="text-subtle">{{ u.yaratilgan|date:"d.m.Y" }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <a class="usta-havola" href="{% url 'admin:ustalar_usta_changelist' %}?tasdiqlangan__exact=0">
+                    Hammasini ko'rish va tasdiqlash →
+                </a>
+            {% else %}
+                <p class="usta-bosh">
+                    <span class="material-symbols-outlined">task_alt</span>
+                    Tasdiq kutayotgan usta yo'q.
+                </p>
+            {% endif %}
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" with title="Oxirgi arizalar" %}
+            {% if oxirgi_arizalar %}
+                <ul class="usta-royxat">
+                    {% for a in oxirgi_arizalar %}
+                        <li>
+                            <a href="{% url 'admin:arizalar_ariza_change' a.pk %}">
+                                <b>#{{ a.pk }} {{ a.kategoriya }}</b>
+                                <span class="text-subtle">{{ a.mijoz }} → {{ a.usta }}</span>
+                            </a>
+                            <span class="usta-royxat__ong">
+                                {% if a.status == 'yangi' %}
+                                    {% component "unfold/helpers/label.html" with variant="info" text=a.get_status_display size="md" %}{% endcomponent %}
+                                {% elif a.status == 'qabul' %}
+                                    {% component "unfold/helpers/label.html" with variant="warning" text=a.get_status_display size="md" %}{% endcomponent %}
+                                {% elif a.status == 'bajarildi' %}
+                                    {% component "unfold/helpers/label.html" with variant="success" text=a.get_status_display size="md" %}{% endcomponent %}
+                                {% else %}
+                                    {% component "unfold/helpers/label.html" with text=a.get_status_display size="md" %}{% endcomponent %}
+                                {% endif %}
+                                <span class="text-subtle">{{ a.yaratilgan|date:"d.m H:i" }}</span>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="usta-bosh"><span class="material-symbols-outlined">inbox</span> Hali ariza yo'q.</p>
+            {% endif %}
+        {% endcomponent %}
+    </div>
+</div>
+{% endblock %}

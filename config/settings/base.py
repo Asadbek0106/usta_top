@@ -2,6 +2,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.templatetags.static import static
+from django.urls import reverse_lazy
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -14,6 +16,8 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 
 DJANGO_APPS = [
+    # Admin panel mavzusi: django.contrib.admin'dan OLDIN turishi shart (shablonlarini almashtiradi)
+    'unfold',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -54,7 +58,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -86,6 +90,8 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = 'uz'
 TIME_ZONE = 'Asia/Tashkent'
 USE_I18N = True
+# Admin panel (unfold) matnlarining o'zbekcha tarjimasi: locale/uz/LC_MESSAGES/django.po
+LOCALE_PATHS = [BASE_DIR / 'locale']
 USE_TZ = True
 
 STATIC_URL = 'static/'
@@ -156,3 +162,113 @@ TELEFON_TASDIQLASH = env.bool('TELEFON_TASDIQLASH', default=bool(TELEGRAM_BOT_TO
 # Kod qancha vaqt amal qiladi va bitta kodni necha marta noto'g'ri kiritish mumkin
 TASDIQ_KOD_MUDDATI = timedelta(minutes=10)
 TASDIQ_KOD_URINISHLAR = 5
+
+
+# --- Admin panel (django-unfold) ---
+# /admin/login/ to'g'ridan-to'g'ri ochilganda kirgandan keyin Django /accounts/profile/ ga (404) yuboradi
+LOGIN_REDIRECT_URL = reverse_lazy('admin:index')
+
+UNFOLD = {
+    'SITE_TITLE': "Usta admin",
+    'SITE_HEADER': "Usta",
+    'SITE_SUBHEADER': "Boshqaruv paneli",
+    'SITE_SYMBOL': 'handyman',  # Material Symbols nomi
+    'SITE_URL': env('FRONTEND_URL', default='/'),
+    'SHOW_HISTORY': True,
+    'SHOW_VIEW_ON_SITE': False,
+    'SHOW_BACK_BUTTON': True,
+    'ENVIRONMENT': 'apps.core.admin_panel.muhit',
+    'DASHBOARD_CALLBACK': 'apps.core.admin_panel.dashboard',
+    'STYLES': [lambda request: static('core/admin.css')],
+    'COLORS': {
+        # Saytdagi indigo rang (#26406b = 700) asosida
+        'primary': {
+            '50': '#eef2f8',
+            '100': '#dbe3f0',
+            '200': '#b9c8e1',
+            '300': '#8ea6cc',
+            '400': '#6382b4',
+            '500': '#44649a',
+            '600': '#33507f',
+            '700': '#26406b',
+            '800': '#1f3557',
+            '900': '#192a45',
+            '950': '#0f1a2c',
+        },
+    },
+    'SIDEBAR': {
+        'show_search': True,
+        'show_all_applications': False,
+        'navigation': [
+            {
+                'title': "Asosiy",
+                'items': [
+                    {'title': "Dashboard", 'icon': 'dashboard', 'link': reverse_lazy('admin:index')},
+                ],
+            },
+            {
+                'title': "Platforma",
+                'items': [
+                    {
+                        'title': "Ustalar",
+                        'icon': 'engineering',
+                        'link': reverse_lazy('admin:ustalar_usta_changelist'),
+                        # Tasdiq kutayotgan ustalar soni (0 bo'lsa ko'rinmaydi)
+                        'badge': 'apps.core.admin_panel.tasdiq_kutayotganlar',
+                    },
+                    {
+                        'title': "Arizalar",
+                        'icon': 'assignment',
+                        'link': reverse_lazy('admin:arizalar_ariza_changelist'),
+                        'badge': 'apps.core.admin_panel.yangi_arizalar',
+                    },
+                    {'title': "Sharhlar", 'icon': 'reviews', 'link': reverse_lazy('admin:arizalar_sharh_changelist')},
+                    {
+                        'title': "Sevimlilar",
+                        'icon': 'favorite',
+                        'link': reverse_lazy('admin:ustalar_sevimli_changelist'),
+                    },
+                ],
+            },
+            {
+                'title': "Ma'lumotnomalar",
+                'collapsible': True,
+                'items': [
+                    {
+                        'title': "Kategoriyalar",
+                        'icon': 'category',
+                        'link': reverse_lazy('admin:ustalar_kategoriya_changelist'),
+                    },
+                    {
+                        'title': "Shaharlar",
+                        'icon': 'location_city',
+                        'link': reverse_lazy('admin:ustalar_shahar_changelist'),
+                    },
+                ],
+            },
+            {
+                'title': "Foydalanuvchilar",
+                'collapsible': True,
+                'items': [
+                    {
+                        'title': "Foydalanuvchilar",
+                        'icon': 'person',
+                        'link': reverse_lazy('admin:accounts_user_changelist'),
+                    },
+                    {
+                        'title': "Guruhlar",
+                        'icon': 'group',
+                        'link': reverse_lazy('admin:auth_group_changelist'),
+                        'permission': lambda request: request.user.is_superuser,
+                    },
+                    {
+                        'title': "Telegram kodlari",
+                        'icon': 'sms',
+                        'link': reverse_lazy('admin:accounts_telefontasdiq_changelist'),
+                        'permission': lambda request: request.user.is_superuser,
+                    },
+                ],
+            },
+        ],
+    },
+}
