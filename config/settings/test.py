@@ -28,6 +28,11 @@ MAILERS = {
 
 # Testlar haqiqiy Telegram'ga murojaat qilmasligi kerak (.env'da token bo'lsa ham).
 # Bot bilan bog'liq testlar bu sozlamalarni override_settings orqali o'zi yoqadi.
+# Testlarda yuklangan rasmlar loyiha papkasiga emas, vaqtinchalik papkaga tushadi
+import tempfile  # noqa: E402
+
+MEDIA_ROOT = tempfile.mkdtemp(prefix='usta-test-media-')
+
 TELEGRAM_BOT_TOKEN = ''
 TELEGRAM_BOT_USERNAME = ''
 TELEFON_TASDIQLASH = False

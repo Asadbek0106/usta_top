@@ -21,7 +21,7 @@ export default function Statistika() {
       <h2 id="statistika-sarlavha">Statistika</h2>
       <div className="stat-kartalar">
         <StatKarta nomi="Jami arizalar" qiymat={s.jami_arizalar} izoh={`Shu oy: ${s.shu_oy.arizalar}`} />
-        <StatKarta nomi="Bajarilgan" qiymat={s.holatlar.bajarildi} izoh={`Jarayonda: ${s.holatlar.qabul + s.holatlar.yangi}`} />
+        <StatKarta nomi="Bajarilgan" qiymat={s.holatlar.bajarildi} izoh={`Jarayonda: ${s.holatlar.yangi + (s.holatlar.narx_taklif ?? 0) + s.holatlar.qabul}`} />
         <StatKarta nomi="Daromad" qiymat={somda(s.daromad)} izoh={`Shu oy: ${somda(s.shu_oy.daromad)}`} />
         <StatKarta
           nomi="Bajarish ulushi"

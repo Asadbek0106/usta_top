@@ -859,15 +859,6 @@ legend {
   border-top: 1px solid var(--chiziq);
 }
 
-.qabul {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.qabul input {
-  width: 13rem;
-}
-
 .ariza__sharh {
   margin-top: 1rem;
   padding: 0.75rem 1rem;
@@ -890,6 +881,11 @@ legend {
 .status--yangi {
   background: var(--indigo-och);
   color: var(--indigo);
+}
+
+.status--narx_taklif {
+  background: #e6e0f5;
+  color: #4b3a87;
 }
 
 .status--qabul {
@@ -1155,6 +1151,10 @@ legend {
   box-shadow: 0 0 0 2px var(--oq);
 }
 
+.tarix__qadam--narx_taklif::before {
+  background: #6b58b8;
+}
+
 .tarix__qadam--qabul::before {
   background: var(--sariq-toq);
 }
@@ -1173,6 +1173,147 @@ legend {
 
 .tarix__qadam .xira {
   font-size: 0.8rem;
+}
+
+.tarix__izoh {
+  color: var(--siyoh);
+  font-size: 0.85rem;
+}
+
+/* ---------- Arizaga rasm biriktirish ---------- */
+
+.rasm-tanlash__yorliq {
+  font-weight: 600;
+}
+
+.rasm-tanlash__royxat,
+.ariza__rasmlar {
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rasm-tanlash__royxat li {
+  position: relative;
+}
+
+.rasm-tanlash__royxat img,
+.ariza__rasmlar img {
+  display: block;
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  border-radius: var(--radius-kichik);
+  border: 1px solid var(--chiziq);
+  background: var(--qogoz);
+}
+
+.ariza__rasmlar img {
+  width: 7rem;
+  height: 7rem;
+}
+
+.ariza__rasmlar a:focus-visible img,
+.ariza__rasmlar a:hover img {
+  border-color: var(--indigo);
+}
+
+.rasm-tanlash__ochir {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 2px solid var(--oq);
+  border-radius: 50%;
+  background: var(--siyoh);
+  color: var(--oq);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rasm-tanlash__tugma {
+  justify-self: start;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.rasm-tanlash input:focus-visible + .rasm-tanlash__tugma {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+/* ---------- Narx taklifi ---------- */
+
+.taklif {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #cfc6ec;
+  border-radius: var(--radius-kichik);
+  background: #f5f2fc;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.taklif__narx {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.taklif__narx span {
+  font-size: 0.85rem;
+  color: var(--polat);
+}
+
+.taklif__narx strong {
+  font-size: 1.35rem;
+}
+
+.taklif__izoh {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.taklif__tugmalar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.taklif__tugmalar .xira {
+  margin: 0;
+}
+
+.taklif__rad {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 32rem;
+}
+
+.narx-forma {
+  flex-basis: 100%;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.narx-forma__izoh {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.narx-forma__qator {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 0.5rem;
+  max-width: 40rem;
 }
 
 /* ---------- Usta statistikasi ---------- */
@@ -1445,12 +1586,8 @@ legend {
     grid-template-columns: 1fr;
   }
 
-  .qabul {
-    flex-direction: column;
-  }
-
-  .qabul input {
-    width: 100%;
+  .narx-forma__qator {
+    grid-template-columns: 1fr;
   }
 }
 

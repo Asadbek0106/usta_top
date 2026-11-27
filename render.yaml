@@ -43,6 +43,10 @@ services:
       - type: rewrite
         source: /api/*
         destination: https://usta-api.onrender.com/api/*
+      # Arizaga yuklangan rasmlar
+      - type: rewrite
+        source: /media/*
+        destination: https://usta-api.onrender.com/media/*
       # React Router (BrowserRouter): /ustalar/5 kabi manzillar ham index.html'ni ochadi
       - type: rewrite
         source: /*

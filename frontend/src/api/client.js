@@ -110,12 +110,15 @@ export async function api(yol, { method = 'GET', body, params, signal, qaytaUrin
   const ochiq = OCHIQ_YOLLAR.includes(yol)
   const access = tokenBilan && !ochiq ? tokenlar.access : null
   const headers = { Accept: 'application/json' }
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // FormData (fayl yuklash) bo'lsa Content-Type'ni brauzer o'zi qo'yadi: multipart/form-data; boundary=...
+  const formaMi = body instanceof FormData
+  if (body !== undefined && !formaMi) headers['Content-Type'] = 'application/json'
   if (access) headers.Authorization = `Bearer ${access}`
 
   let javob
   try {
-    javob = await fetch(url, { method, headers, signal, body: body === undefined ? undefined : JSON.stringify(body) })
+    const jonatma = body === undefined || formaMi ? body : JSON.stringify(body)
+    javob = await fetch(url, { method, headers, signal, body: jonatma })
   } catch (err) {
     if (bekorQilinganmi(err)) throw err
     throw new ApiXato(0, ALOQA_YOQ)

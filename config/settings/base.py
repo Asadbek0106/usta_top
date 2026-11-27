@@ -97,6 +97,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# Foydalanuvchi yuklagan fayllar (arizaga biriktirilgan rasmlar)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = Path(env('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
+# Bitta arizaga nechta rasm va har biri necha MB gacha bo'lishi mumkin
+ARIZA_RASM_SONI = 5
+ARIZA_RASM_HAJMI_MB = 5
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {

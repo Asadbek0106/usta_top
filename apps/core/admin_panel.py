@@ -68,6 +68,7 @@ def dashboard(request, context):
     arizalar = Ariza.objects.aggregate(
         jami=Count('id'),
         yangi=Count('id', filter=Q(status=Ariza.Status.YANGI)),
+        narx_taklif=Count('id', filter=Q(status=Ariza.Status.NARX_TAKLIF)),
         qabul=Count('id', filter=Q(status=Ariza.Status.QABUL)),
         bajarildi=Count('id', filter=bajarildi),
         bekor=Count('id', filter=Q(status=Ariza.Status.BEKOR)),
@@ -127,6 +128,8 @@ def dashboard(request, context):
         ],
         'holatlar': [
             {'nomi': "Yangi", 'soni': arizalar['yangi'], 'status': 'yangi', 'rang': 'info'},
+            {'nomi': "Narx taklif qilingan", 'soni': arizalar['narx_taklif'], 'status': 'narx_taklif',
+             'rang': 'primary'},
             {'nomi': "Qabul qilingan", 'soni': arizalar['qabul'], 'status': 'qabul', 'rang': 'warning'},
             {'nomi': "Bajarilgan", 'soni': arizalar['bajarildi'], 'status': 'bajarildi', 'rang': 'success'},
             {'nomi': "Bekor qilingan", 'soni': arizalar['bekor'], 'status': 'bekor', 'rang': 'default'},

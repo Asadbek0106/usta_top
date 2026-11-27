@@ -1,11 +1,13 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from unfold.admin import ModelAdmin, StackedInline, TabularInline
 from unfold.decorators import display
 
-from .models import Ariza, ArizaTarixi, Sharh
+from .models import Ariza, ArizaRasm, ArizaTarixi, Sharh
 
 STATUS_RANGLARI = {
     Ariza.Status.YANGI.label: 'info',
+    Ariza.Status.NARX_TAKLIF.label: 'primary',
     Ariza.Status.QABUL.label: 'warning',
     Ariza.Status.BAJARILDI.label: 'success',
     Ariza.Status.BEKOR.label: 'default',
@@ -19,12 +21,30 @@ class SharhInline(StackedInline):
     readonly_fields = ('javob_vaqti',)
 
 
+class ArizaRasmInline(TabularInline):
+    model = ArizaRasm
+    extra = 0
+    tab = True
+    fields = ('korinish', 'rasm', 'yaratilgan')
+    readonly_fields = ('korinish', 'yaratilgan')
+
+    @display(description="Ko'rinish")
+    def korinish(self, obj):
+        if not obj.rasm:
+            return '—'
+        return format_html(
+            '<a href="{0}" target="_blank" rel="noopener"><img src="{0}" alt="" '
+            'style="height:72px;width:96px;object-fit:cover;border-radius:6px"></a>',
+            obj.rasm.url,
+        )
+
+
 class ArizaTarixiInline(TabularInline):
     model = ArizaTarixi
     extra = 0
     tab = True
     # Tarix faqat ko'rish uchun: uni ilova o'zi yozadi, qo'lda o'zgartirilmaydi
-    fields = ('vaqt', 'eski_status', 'yangi_status', 'kim')
+    fields = ('vaqt', 'eski_status', 'yangi_status', 'kim', 'izoh')
     readonly_fields = fields
     can_delete = False
 
@@ -43,11 +63,12 @@ class ArizaAdmin(ModelAdmin):
     readonly_fields = ('yaratilgan', 'yangilangan')
     fieldsets = (
         (None, {'fields': ('mijoz', 'usta', 'kategoriya', 'status', 'kelishilgan_narx')}),
+        ("Usta taklifi", {'fields': ('taklif_narx', 'taklif_izoh')}),
         ("Ish haqida", {'fields': ('tavsif', 'manzil')}),
         ("Sanalar", {'fields': ('yaratilgan', 'yangilangan'), 'classes': ('collapse',)}),
     )
     date_hierarchy = 'yaratilgan'
-    inlines = [ArizaTarixiInline, SharhInline]
+    inlines = [ArizaRasmInline, ArizaTarixiInline, SharhInline]
     warn_unsaved_form = True
 
     @display(description="№", ordering='pk')

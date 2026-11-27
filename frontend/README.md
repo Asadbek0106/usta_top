@@ -47,7 +47,7 @@ src/
 ├── pages/
 │   ├── Katalog.jsx        # ustalar: kategoriya, shahar, narx, reyting, qidiruv, saralash
 │   ├── UstaSahifasi.jsx   # xizmatlar, sharhlar va javoblar, ariza formasi
-│   ├── Arizalarim.jsx     # qabul / bajarildi / bekor qilish, tarix, sharh va unga javob
+│   ├── Arizalarim.jsx     # narx taklifi / rozilik / bajarildi / bekor qilish, rasmlar, tarix, sharh
 │   ├── Sevimlilar.jsx     # saqlangan ustalar
 │   ├── UstaBolish.jsx     # usta profilini yaratish
 │   ├── UstaProfilim.jsx   # statistika, profilni tahrirlash, xizmatlarni boshqarish
