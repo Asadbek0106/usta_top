@@ -27,6 +27,9 @@ services:
       ALLOWED_HOSTS: localhost,127.0.0.1,web
       HTTPS: "False"
       LOG_LEVEL: INFO
+    volumes:
+      # Yuklangan rasmlar container qayta yaratilganda yo'qolmasligi uchun
+      - media_data:/app/media
     ports:
       - "8000:8000"
     depends_on:
@@ -62,4 +65,5 @@ services:
 
 volumes:
   postgres_data:
+  media_data:
   frontend_node_modules:

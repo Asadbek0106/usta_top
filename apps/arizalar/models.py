@@ -1,3 +1,6 @@
+import uuid
+from pathlib import PurePath
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -10,12 +13,20 @@ from apps.core.models import TimeStampedModel
 class Ariza(TimeStampedModel):
     class Status(models.TextChoices):
         YANGI = 'yangi', 'Yangi'
+        NARX_TAKLIF = 'narx_taklif', 'Narx taklif qilindi'
         QABUL = 'qabul', 'Qabul qilindi'
         BAJARILDI = 'bajarildi', 'Bajarildi'
         BEKOR = 'bekor', 'Bekor qilindi'
 
+    # Ish jarayoni:
+    #   yangi        — mijoz ish tavsifi va rasmlarini yubordi, usta ko'rib narx taklif qiladi
+    #   narx_taklif  — usta narx aytdi; mijoz rozi bo'lsa → qabul, rad etsa → yana yangi
+    #                  (usta boshqa narx taklif qilishi mumkin). Javob kutilayotganda usta narxni o'zgartira oladi.
+    #   qabul        — narx kelishildi, usta ishni bajaradi → bajarildi
+    # Tugamagan arizani mijoz ham, usta ham istalgan payt bekor qila oladi.
     OTISHLAR = {
-        Status.YANGI: {Status.QABUL, Status.BEKOR},
+        Status.YANGI: {Status.NARX_TAKLIF, Status.BEKOR},
+        Status.NARX_TAKLIF: {Status.NARX_TAKLIF, Status.QABUL, Status.YANGI, Status.BEKOR},
         Status.QABUL: {Status.BAJARILDI, Status.BEKOR},
     }
 
@@ -29,6 +40,10 @@ class Ariza(TimeStampedModel):
     tavsif = models.TextField()
     manzil = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.YANGI)
+    taklif_narx = models.DecimalField(
+        "Usta taklif qilgan narx", max_digits=12, decimal_places=2, null=True, blank=True,
+    )
+    taklif_izoh = models.TextField("Taklif izohi", blank=True)
     kelishilgan_narx = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     class Meta:
@@ -43,6 +58,10 @@ class Ariza(TimeStampedModel):
             models.CheckConstraint(
                 condition=models.Q(kelishilgan_narx__isnull=True) | models.Q(kelishilgan_narx__gte=0),
                 name='kelishilgan_narx_manfiy_emas',
+            ),
+            models.CheckConstraint(
+                condition=models.Q(taklif_narx__isnull=True) | models.Q(taklif_narx__gte=0),
+                name='taklif_narx_manfiy_emas',
             ),
         ]
 
@@ -59,6 +78,29 @@ class Ariza(TimeStampedModel):
 
     def otish_mumkinmi(self, yangi_status):
         return yangi_status in self.OTISHLAR.get(self.status, set())
+
+
+def ariza_rasmi_yoli(instance, filename):
+    """Fayl nomi tasodifiy UUID: asl nom (shaxsiy ma'lumot bo'lishi mumkin) saqlanmaydi va
+    manzilni taxmin qilib boshqa mijozlarning rasmlarini ochib bo'lmaydi."""
+    kengaytma = PurePath(filename).suffix.lower()[:5] or '.jpg'
+    return f'arizalar/{timezone.now():%Y/%m}/{uuid.uuid4().hex}{kengaytma}'
+
+
+class ArizaRasm(models.Model):
+    """Mijoz arizaga biriktirgan rasm: usta ishni ko'rib, narxni shunga qarab belgilaydi."""
+
+    ariza = models.ForeignKey(Ariza, on_delete=models.CASCADE, related_name='rasmlar')
+    rasm = models.ImageField("Rasm", upload_to=ariza_rasmi_yoli)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Ariza rasmi"
+        verbose_name_plural = "Ariza rasmlari"
+        ordering = ['pk']
+
+    def __str__(self):
+        return f"#{self.ariza_id} rasmi"
 
 
 class Sharh(TimeStampedModel):
@@ -98,6 +140,8 @@ class ArizaTarixi(models.Model):
     ariza = models.ForeignKey(Ariza, on_delete=models.CASCADE, related_name='tarix')
     eski_status = models.CharField(max_length=20, choices=Ariza.Status.choices, blank=True)
     yangi_status = models.CharField(max_length=20, choices=Ariza.Status.choices)
+    # Masalan: "Taklif: 150 000 so'm" yoki mijoz narxni rad etgan sabab
+    izoh = models.CharField(max_length=500, blank=True)
     kim = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

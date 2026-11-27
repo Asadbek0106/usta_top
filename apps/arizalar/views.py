@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -16,7 +17,9 @@ from .serializers import (
     ArizaCreateSerializer,
     ArizaSerializer,
     ArizaUpdateSerializer,
-    QabulSerializer,
+    NarxRadSerializer,
+    NarxRozilikSerializer,
+    NarxTaklifSerializer,
     SharhJavobSerializer,
     SharhSerializer,
 )
@@ -31,6 +34,8 @@ class ArizaViewSet(
 ):
     permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'patch']  # PUT va DELETE yo'q
+    # Ariza rasmlar bilan multipart/form-data ko'rinishida yuboriladi, qolgan amallar JSON
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = ArizaFilter
     ordering_fields = ['yaratilgan', 'yangilangan']
@@ -44,7 +49,10 @@ class ArizaViewSet(
             Ariza.objects
             .filter(Q(mijoz=user) | Q(usta__user=user))
             .select_related('mijoz', 'usta__user', 'kategoriya', 'sharh')
-            .prefetch_related(Prefetch('tarix', queryset=ArizaTarixi.objects.select_related('kim')))
+            .prefetch_related(
+                Prefetch('tarix', queryset=ArizaTarixi.objects.select_related('kim')),
+                'rasmlar',
+            )
         )
 
     def get_throttles(self):
@@ -84,13 +92,37 @@ class ArizaViewSet(
         serializer.save()
         return self._javob(ariza)
 
-    @extend_schema(request=QabulSerializer, responses=ArizaSerializer)
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsArizaUstasi])
-    def qabul(self, request, pk=None):
+    @extend_schema(request=NarxTaklifSerializer, responses=ArizaSerializer)
+    @action(detail=True, methods=['post'], url_path='narx-taklif',
+            permission_classes=[IsAuthenticated, IsArizaUstasi])
+    def narx_taklif(self, request, pk=None):
+        """Usta rasmlar va tavsifni ko'rib narx taklif qiladi (mijoz javob bermaguncha narxni o'zgartirishi mumkin)."""
         ariza = self.get_object()
-        serializer = QabulSerializer(data=request.data)
+        serializer = NarxTaklifSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ariza = services.qabul_qilish(ariza, kim=request.user, **serializer.validated_data)
+        ariza = services.narx_taklif_qilish(ariza, kim=request.user, **serializer.validated_data)
+        return self._javob(ariza)
+
+    @extend_schema(request=NarxRozilikSerializer, responses=ArizaSerializer)
+    @action(detail=True, methods=['post'], url_path='narx-rozi',
+            permission_classes=[IsAuthenticated, IsArizaMijozi])
+    def narx_rozi(self, request, pk=None):
+        """Mijoz taklif qilingan narxga rozi: narx kelishiladi, ariza "Qabul qilindi" holatiga o'tadi."""
+        ariza = self.get_object()
+        serializer = NarxRozilikSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ariza = services.narxga_rozilik(ariza, kim=request.user, kutilgan_narx=serializer.validated_data.get('narx'))
+        return self._javob(ariza)
+
+    @extend_schema(request=NarxRadSerializer, responses=ArizaSerializer)
+    @action(detail=True, methods=['post'], url_path='narx-rad',
+            permission_classes=[IsAuthenticated, IsArizaMijozi])
+    def narx_rad(self, request, pk=None):
+        """Mijoz narxga rozi emas: ariza "Yangi" holatiga qaytadi, usta boshqa narx taklif qilishi mumkin."""
+        ariza = self.get_object()
+        serializer = NarxRadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ariza = services.narxni_rad_etish(ariza, kim=request.user, **serializer.validated_data)
         return self._javob(ariza)
 
     @extend_schema(request=None, responses=ArizaSerializer)

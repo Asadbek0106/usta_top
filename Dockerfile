@@ -36,6 +36,9 @@ RUN SECRET_KEY=build-uchun-vaqtinchalik DATABASE_URL=sqlite:////tmp/build.db \
 
 
 
+# Yuklangan rasmlar uchun papka: ilova oddiy foydalanuvchi nomidan ishlaydi, unga yozish huquqi kerak
+RUN mkdir -p /app/media && chown app:app /app/media
+
 USER app
 
 EXPOSE 8000

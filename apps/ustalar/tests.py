@@ -373,7 +373,7 @@ class StatistikaTest(BaseAPITestCase):
         self.assertEqual(javob.status_code, 200, javob.data)
         d = javob.data
         self.assertEqual(d['jami_arizalar'], 5)
-        self.assertEqual(d['holatlar'], {'yangi': 1, 'qabul': 1, 'bajarildi': 2, 'bekor': 1})
+        self.assertEqual(d['holatlar'], {'yangi': 1, 'narx_taklif': 0, 'qabul': 1, 'bajarildi': 2, 'bekor': 1})
         self.assertEqual(d['daromad'], 350000)
         self.assertEqual(d['bajarish_foizi'], 67)  # 3 ta yakunlangandan 2 tasi bajarilgan
         self.assertEqual(d['shu_oy'], {'arizalar': 5, 'bajarildi': 2, 'daromad': 350000})

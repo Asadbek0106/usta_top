@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { api } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { Yulduzlar } from '../components/Reyting'
+import { RasmlarGalereyasi } from '../components/RasmTanlash'
 import Sahifalash from '../components/Sahifalash'
 import StatusBelgi from '../components/StatusBelgi'
 import UstaJavobi from '../components/UstaJavobi'
@@ -13,7 +14,7 @@ import { useSarlavha } from '../hooks/useSarlavha'
 import { useSorov } from '../hooks/useSorov'
 
 const STATUSLAR = [
-  ['', 'Barcha holatlar'], ['yangi', 'Yangi'], ['qabul', 'Qabul qilingan'],
+  ['', 'Barcha holatlar'], ['yangi', 'Yangi'], ['narx_taklif', 'Narx taklif qilingan'], ['qabul', 'Qabul qilingan'],
   ['bajarildi', 'Bajarilgan'], ['bekor', 'Bekor qilingan'],
 ]
 const ROLLAR = [['', 'Hammasi'], ['mijoz', 'Men yuborganlar'], ['usta', 'Menga kelganlar']]
@@ -102,16 +103,20 @@ function ArizaKartasi({ ariza, men, yangila }) {
   const ustamanmi = ariza.usta.telefon === men.telefon
   const [xato, setXato] = useState('')
   const [band, setBand] = useState(false)
-  const [narx, setNarx] = useState('')
 
+  // Muvaffaqiyatli bo'lsa true qaytaradi (forma yopilishi uchun)
   const amal = async (nomi, body) => {
-    if (band) return
+    if (band) return false
     setBand(true)
     setXato('')
     try {
       yangila(await api(`/arizalar/${ariza.id}/${nomi}/`, { method: 'POST', body: body ?? {} }))
+      return true
     } catch (e) {
       setXato(e.message)
+      // Usta shu orada narxni o'zgartirgan: kartadagi narxni yangilab, mijozga yangisini ko'rsatamiz
+      if (e.data?.code === 'narx_ozgargan') api(`/arizalar/${ariza.id}/`).then(yangila).catch(() => {})
+      return false
     } finally {
       setBand(false)
     }
@@ -126,6 +131,7 @@ function ArizaKartasi({ ariza, men, yangila }) {
         <StatusBelgi status={ariza.status} nomi={ariza.status_nomi} />
       </div>
       <p className="ariza__tavsif">{ariza.tavsif}</p>
+      <RasmlarGalereyasi rasmlar={ariza.rasmlar} />
       <dl className="ariza__malumot">
         <div><dt>Manzil</dt><dd>{ariza.manzil}</dd></div>
         {ustamanmi
@@ -136,7 +142,11 @@ function ArizaKartasi({ ariza, men, yangila }) {
               <dd><Link to={`/ustalar/${ariza.usta.id}`}>{ariza.usta.ism || 'Usta'}</Link>, <a href={`tel:${ariza.usta.telefon}`}>{ariza.usta.telefon}</a></dd>
             </div>
           )}
-        <div><dt>Kelishilgan narx</dt><dd>{somda(ariza.kelishilgan_narx)}</dd></div>
+        {ariza.kelishilgan_narx != null
+          ? <div><dt>Kelishilgan narx</dt><dd>{somda(ariza.kelishilgan_narx)}</dd></div>
+          : ariza.taklif_narx != null
+            ? <div><dt>Taklif qilingan narx</dt><dd>{somda(ariza.taklif_narx)}</dd></div>
+            : !tugadi && <div><dt>Narx</dt><dd className="xira">Usta hali narx aytmagan</dd></div>}
         <div><dt>Yuborilgan</dt><dd><time dateTime={ariza.yaratilgan}>{sana(ariza.yaratilgan)}</time></dd></div>
       </dl>
 
@@ -144,15 +154,18 @@ function ArizaKartasi({ ariza, men, yangila }) {
 
       {xato && <p className="xabar xabar--xato" role="alert">{xato}</p>}
 
+      {ariza.status === 'narx_taklif' && (
+        <NarxTaklifi ariza={ariza} ustamanmi={ustamanmi} band={band} amal={amal} />
+      )}
+
       {!tugadi && (
         <div className="ariza__amallar">
           {ustamanmi && ariza.status === 'yangi' && (
-            <form className="qabul" onSubmit={(e) => { e.preventDefault(); amal('qabul', narx ? { kelishilgan_narx: narx } : {}) }}>
-              <label className="sr-only" htmlFor={`narx-${ariza.id}`}>Kelishilgan narx, so'm</label>
-              <input id={`narx-${ariza.id}`} type="number" inputMode="numeric" min="0" step="1" placeholder="Narx, so'm (ixtiyoriy)"
-                value={narx} onChange={(e) => setNarx(e.target.value)} />
-              <button type="submit" className="tugma tugma--asosiy" disabled={band}>Qabul qilish</button>
-            </form>
+            <NarxFormasi arizaId={ariza.id} band={band} yuborish={(body) => amal('narx-taklif', body)}
+              izoh="Tavsif va rasmlarni ko'rib, ish narxini yozing. Mijoz rozi bo'lsa, ish boshlanadi." />
+          )}
+          {!ustamanmi && ariza.status === 'yangi' && (
+            <p className="xira ariza__izoh">Usta arizani ko'rib narx taklif qiladi. Narxga rozi bo'lsangiz, ish boshlanadi.</p>
           )}
           {ustamanmi && ariza.status === 'qabul' && (
             <button type="button" className="tugma tugma--asosiy" disabled={band} onClick={() => amal('bajarildi')}>
@@ -197,6 +210,96 @@ const vaqtMatni = (iso) => {
   return `${sana(iso)}, ${soat}`
 }
 
+// Ariza "Narx taklif qilindi" holatida: mijoz rozi bo'ladi yoki rad etadi, usta esa narxni o'zgartira oladi
+function NarxTaklifi({ ariza, ustamanmi, band, amal }) {
+  const [rad, setRad] = useState(false)
+  const [sabab, setSabab] = useState('')
+  const [ozgartirish, setOzgartirish] = useState(false)
+
+  return (
+    <div className="taklif" role="region" aria-label="Narx taklifi">
+      <p className="taklif__narx">
+        <span>{ustamanmi ? 'Sizning taklifingiz' : 'Usta taklif qilgan narx'}</span>
+        <strong>{somda(ariza.taklif_narx)}</strong>
+      </p>
+      {ariza.taklif_izoh && <p className="taklif__izoh">{ariza.taklif_izoh}</p>}
+
+      {ustamanmi ? (
+        ozgartirish ? (
+          <NarxFormasi arizaId={ariza.id} band={band} boshlangich={ariza.taklif_narx} tugma="Yangi narxni yuborish"
+            boshIzoh={ariza.taklif_izoh}
+            yuborish={async (body) => (await amal('narx-taklif', body)) && setOzgartirish(false)}
+            bekor={() => setOzgartirish(false)} />
+        ) : (
+          <div className="taklif__tugmalar">
+            <p className="xira">Mijoz javobini kutyapsiz.</p>
+            <button type="button" className="tugma tugma--matn" onClick={() => setOzgartirish(true)}>Narxni o'zgartirish</button>
+          </div>
+        )
+      ) : rad ? (
+        <form className="taklif__rad" onSubmit={async (e) => {
+          e.preventDefault()
+          if (await amal('narx-rad', { sabab: sabab.trim() })) setRad(false)
+        }}>
+          <label htmlFor={`sabab-${ariza.id}`}>Nega rozi emassiz? (ixtiyoriy, usta ko'radi)</label>
+          <textarea id={`sabab-${ariza.id}`} rows={2} maxLength={400} value={sabab} onChange={(e) => setSabab(e.target.value)}
+            placeholder="Masalan: qimmat, 300 000 so'mga kelisha olamizmi?" />
+          <div className="taklif__tugmalar">
+            <button type="submit" className="tugma tugma--xavfli" disabled={band}>Narxni rad etish</button>
+            <button type="button" className="tugma tugma--matn" onClick={() => setRad(false)}>Ortga</button>
+          </div>
+        </form>
+      ) : (
+        <div className="taklif__tugmalar">
+          <button type="button" className="tugma tugma--asosiy" disabled={band}
+            onClick={() => amal('narx-rozi', { narx: ariza.taklif_narx })}>
+            Roziman, ishni boshlasin
+          </button>
+          <button type="button" className="tugma tugma--chiziq" disabled={band} onClick={() => setRad(true)}>Rozi emasman</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NarxFormasi({ arizaId, band, yuborish, izoh, boshlangich, boshIzoh = '', tugma = 'Narx taklif qilish', bekor }) {
+  const [narx, setNarx] = useState(boshlangich ? String(Math.round(Number(boshlangich))) : '')
+  const [matn, setMatn] = useState(boshIzoh)
+  const [xato, setXato] = useState('')
+
+  const jonat = (e) => {
+    e.preventDefault()
+    if (!(Number(narx) > 0)) return setXato("Narxni so'mda kiriting.")
+    setXato('')
+    yuborish({ narx, izoh: matn.trim() })
+  }
+
+  return (
+    <form className="narx-forma" onSubmit={jonat} noValidate>
+      {izoh && <p className="xira narx-forma__izoh">{izoh}</p>}
+      <div className="narx-forma__qator">
+        <label className="sr-only" htmlFor={`narx-${arizaId}`}>Narx, so'm</label>
+        <input id={`narx-${arizaId}`} type="number" inputMode="numeric" min="1" step="1000" placeholder="Narx, so'm"
+          value={narx} onChange={(e) => setNarx(e.target.value)} aria-invalid={xato ? true : undefined} />
+        <label className="sr-only" htmlFor={`izoh-${arizaId}`}>Izoh</label>
+        <input id={`izoh-${arizaId}`} maxLength={1000} placeholder="Izoh (ixtiyoriy): material narxi ichida, 1 kunda bitadi"
+          value={matn} onChange={(e) => setMatn(e.target.value)} />
+      </div>
+      {xato && <small className="maydon__xato" role="alert">{xato}</small>}
+      <div className="taklif__tugmalar">
+        <button type="submit" className="tugma tugma--asosiy" disabled={band}>{tugma}</button>
+        {bekor && <button type="button" className="tugma tugma--matn" onClick={bekor}>Ortga</button>}
+      </div>
+    </form>
+  )
+}
+
+const tarixNomi = (t) => {
+  if (!t.eski_status) return 'Ariza yuborildi'
+  if (t.eski_status === t.yangi_status) return "Narx o'zgartirildi"
+  return `${t.eski_status_nomi} → ${t.yangi_status_nomi}`
+}
+
 function Tarix({ tarix }) {
   return (
     <details className="tarix">
@@ -204,9 +307,8 @@ function Tarix({ tarix }) {
       <ol className="tarix__royxat">
         {tarix.map((t) => (
           <li key={t.id} className={`tarix__qadam tarix__qadam--${t.yangi_status}`}>
-            <span className="tarix__nomi">
-              {t.eski_status ? `${t.eski_status_nomi} → ${t.yangi_status_nomi}` : 'Ariza yuborildi'}
-            </span>
+            <span className="tarix__nomi">{tarixNomi(t)}</span>
+            {t.izoh && <span className="tarix__izoh">{t.izoh}</span>}
             <span className="xira">
               <time dateTime={t.vaqt}>{vaqtMatni(t.vaqt)}</time>
               {t.kim && <> · {t.kim}</>}

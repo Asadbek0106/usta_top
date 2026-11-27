@@ -79,9 +79,11 @@ class Command(BaseCommand):
                 # Arizalar oxirgi ~6 oyga tarqatiladi: ustaning statistikasida oylar bo'yicha grafik chiqishi uchun
                 yaratilgan = hozir - timedelta(days=random.randint(0, 170), hours=random.randint(0, 23))
                 yangilangan = min(hozir, yaratilgan + timedelta(days=random.randint(1, 5)))
-                narx = None
+                narx = taklif = None
+                if status in (Ariza.Status.NARX_TAKLIF, Ariza.Status.QABUL, Ariza.Status.BAJARILDI):
+                    taklif = xizmat.narx_dan + Decimal(random.randrange(0, 20) * 10000)
                 if status in (Ariza.Status.QABUL, Ariza.Status.BAJARILDI):
-                    narx = xizmat.narx_dan + Decimal(random.randrange(0, 20) * 10000)
+                    narx = taklif
                 ariza = Ariza.objects.create(
                     mijoz=mijoz,
                     usta=usta,
@@ -89,15 +91,22 @@ class Command(BaseCommand):
                     tavsif="Uyda ta'mirlash ishi kerak",
                     manzil="Toshkent, Chilonzor tumani",
                     status=status,
+                    taklif_narx=taklif,
                     kelishilgan_narx=narx,
                 )
                 Ariza.objects.filter(pk=ariza.pk).update(yaratilgan=yaratilgan, yangilangan=yangilangan)
 
                 tarix = [ArizaTarixi(ariza=ariza, yangi_status=Ariza.Status.YANGI, kim=mijoz, vaqt=yaratilgan)]
-                if status in (Ariza.Status.QABUL, Ariza.Status.BAJARILDI):
+                if taklif is not None:
+                    oraliq = (yangilangan - yaratilgan) / 3
                     tarix.append(ArizaTarixi(ariza=ariza, eski_status=Ariza.Status.YANGI,
-                                             yangi_status=Ariza.Status.QABUL, kim=usta.user,
-                                             vaqt=yaratilgan + (yangilangan - yaratilgan) / 2))
+                                             yangi_status=Ariza.Status.NARX_TAKLIF, kim=usta.user,
+                                             izoh=f"Taklif: {int(taklif):,} so'm".replace(',', ' '),
+                                             vaqt=yaratilgan + oraliq))
+                if status in (Ariza.Status.QABUL, Ariza.Status.BAJARILDI):
+                    tarix.append(ArizaTarixi(ariza=ariza, eski_status=Ariza.Status.NARX_TAKLIF,
+                                             yangi_status=Ariza.Status.QABUL, kim=mijoz,
+                                             vaqt=yaratilgan + 2 * oraliq))
                 if status == Ariza.Status.BAJARILDI:
                     tarix.append(ArizaTarixi(ariza=ariza, eski_status=Ariza.Status.QABUL,
                                              yangi_status=Ariza.Status.BAJARILDI, kim=usta.user, vaqt=yangilangan))

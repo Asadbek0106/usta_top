@@ -34,7 +34,7 @@ Telefon raqam Telegram bot orqali tasdiqlanadi. Loyiha Docker'da ishlaydi, GitHu
 - **Parolni tiklash.** Ro'yxatdan o'tgan raqam botga yuborilsa, bot parolni tiklash kodini beradi. Yangi parol o'rnatilgach, boshqa qurilmalardagi barcha sessiyalar yopiladi.
 - **Ustalar katalogi**: shahar, kategoriya, narx va reyting bo'yicha filtr, ism yoki tavsif bo'yicha qidiruv. Saralash: reyting, sharhlar soni, eng arzon narx, tajriba yoki yangilari birinchi. Ro'yxat sahifalarga bo'linadi.
 - **Sevimli ustalar**: yoqqan ustani saqlab qo'yish va keyin "Sevimlilar" sahifasidan topish.
-- **Arizalar**: mijoz ariza yuboradi → usta narxni kelishib qabul qiladi → usta bajarildi deb belgilaydi → mijoz baho (1–5) va sharh qoldiradi. Har bir bosqichda faqat ruxsat etilgan o'tishlar mumkin.
+- **Arizalar**: mijoz ish tavsifi va rasmlarini (5 tagacha) yuboradi → usta rasmlarni ko'rib narx taklif qiladi → mijoz narxga rozi bo'lsa ish boshlanadi (rad etsa, usta boshqa narx aytishi mumkin) → usta bajarildi deb belgilaydi → mijoz baho (1–5) va sharh qoldiradi. Har bir bosqichda faqat ruxsat etilgan o'tishlar mumkin.
 - **Ariza tarixi**: arizaning har bir holat o'zgarishi saqlanadi (kim, qachon, qaysi holatdan qaysiga). Frontend'da u vaqt chizig'i ko'rinishida chiqadi.
 
 **Usta uchun**
@@ -209,10 +209,12 @@ Reytingi hali yo'q ustalar tartiblash yo'nalishidan qat'i nazar ro'yxat oxirida 
 | Metod | URL | Kim | Tavsif |
 |---|---|---|---|
 | GET | `arizalar/` | ishtirokchilar | Mening arizalarim (har biri tarixi bilan). `?rol=mijoz\|usta`, `?status=...`, `?ordering=yaratilgan` |
-| POST | `arizalar/` | mijoz | Ariza yuborish |
+| POST | `arizalar/` | mijoz | Ariza yuborish. `multipart/form-data`: `rasmlar` maydonida 5 tagacha rasm (har biri 5 MB gacha) |
 | GET | `arizalar/{id}/` | ishtirokchilar | Batafsil |
 | PATCH | `arizalar/{id}/` | mijoz | Tavsif va manzilni tahrirlash (faqat "yangi" holatda) |
-| POST | `arizalar/{id}/qabul/` | usta | Qabul qilish, ixtiyoriy `kelishilgan_narx` |
+| POST | `arizalar/{id}/narx-taklif/` | usta | Narx taklif qilish: `narx`, ixtiyoriy `izoh`. Mijoz javob bermaguncha qayta yuborib narxni o'zgartirish mumkin |
+| POST | `arizalar/{id}/narx-rozi/` | mijoz | Narxga rozilik (`narx` — mijoz ko'rgan narx; usta shu orada o'zgartirgan bo'lsa `narx_ozgargan` xatosi) |
+| POST | `arizalar/{id}/narx-rad/` | mijoz | Narxni rad etish, ixtiyoriy `sabab`. Ariza "yangi" holatiga qaytadi |
 | POST | `arizalar/{id}/bajarildi/` | usta | Bajarildi deb belgilash |
 | POST | `arizalar/{id}/bekor/` | ishtirokchilar | Bekor qilish |
 | POST | `arizalar/{id}/sharh/` | mijoz | Baho (1–5) va izoh, faqat bajarilgan arizaga |
@@ -221,11 +223,14 @@ Reytingi hali yo'q ustalar tartiblash yo'nalishidan qat'i nazar ro'yxat oxirida 
 Ariza holatlari:
 
 ```
-yangi ──► qabul ──► bajarildi
-  │         │
-  └────┬────┘
-       ▼
-     bekor
+            usta narx aytadi          mijoz rozi
+yangi ───────────────────► narx_taklif ──────────► qabul ──► bajarildi
+  ▲                           │    ▲                 │
+  └──── mijoz rad etadi ──────┘    └─ usta narxni    │
+  │                           │       o'zgartiradi   │
+  └───────────────────────────┴──────────┬───────────┘
+                                         ▼
+                                       bekor
 ```
 
 Har bir o'tish `ArizaTarixi` jadvaliga yoziladi. Rad etilgan (ruxsat etilmagan) o'tish tarixga tushmaydi.

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, formaXatolari } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import Maydon, { UmumiyXato } from '../components/Maydon'
+import RasmTanlash from '../components/RasmTanlash'
 import Reyting, { Yulduzlar } from '../components/Reyting'
 import Sahifalash from '../components/Sahifalash'
 import SevimliTugma from '../components/SevimliTugma'
@@ -99,10 +100,14 @@ function UstaTafsiloti({ id }) {
   )
 }
 
+// ListField xatosi ro'yxat ({0: [...], 1: [...]}) yoki oddiy massiv ko'rinishida keladi
+const rasmXatosi = (x) => (x ? [x].flat().flatMap((v) => (typeof v === 'object' ? Object.values(v).flat() : v)).join(' ') : '')
+
 function ArizaFormasi({ usta }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [forma, setForma] = useState({ kategoriya: usta.xizmatlar[0]?.kategoriya.id ?? '', tavsif: '', manzil: '' })
+  const [rasmlar, setRasmlar] = useState([])
   const [xatolar, setXatolar] = useState(null)
   const [yuborilmoqda, setYuborilmoqda] = useState(false)
 
@@ -143,11 +148,17 @@ function ArizaFormasi({ usta }) {
     if (mahalliy) return
     setYuborilmoqda(true)
     try {
-      await api('/arizalar/', {
-        method: 'POST',
-        body: { usta: usta.id, ...forma, tavsif: forma.tavsif.trim(), manzil: forma.manzil.trim() },
+      // Rasmlar bo'lgani uchun JSON emas, multipart/form-data yuboriladi
+      const body = new FormData()
+      body.append('usta', usta.id)
+      body.append('kategoriya', forma.kategoriya)
+      body.append('tavsif', forma.tavsif.trim())
+      body.append('manzil', forma.manzil.trim())
+      rasmlar.forEach((r) => body.append('rasmlar', r.fayl))
+      await api('/arizalar/', { method: 'POST', body })
+      navigate('/arizalarim', {
+        state: { xabar: "Ariza yuborildi. Usta ishni ko'rib narx taklif qiladi — narxga rozi bo'lsangiz, ish boshlanadi." },
       })
-      navigate('/arizalarim', { state: { xabar: "Ariza yuborildi. Usta qabul qilganda holati shu yerda o'zgaradi." } })
     } catch (err) {
       setXatolar(err.status === 429 ? { detail: "Juda ko'p ariza yuborildi. Birozdan keyin urinib ko'ring." } : formaXatolari(err))
       setYuborilmoqda(false)
@@ -173,6 +184,7 @@ function ArizaFormasi({ usta }) {
           <input name="manzil" value={forma.manzil} onChange={ozgar} maxLength={255} autoComplete="street-address"
             placeholder="Tuman, ko'cha, uy" required />
         </Maydon>
+        <RasmTanlash rasmlar={rasmlar} ozgar={setRasmlar} xato={rasmXatosi(xatolar?.rasmlar)} />
         <button type="submit" className="tugma tugma--asosiy tugma--keng" disabled={yuborilmoqda}>
           {yuborilmoqda ? 'Yuborilmoqda…' : 'Ariza yuborish'}
         </button>

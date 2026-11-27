@@ -1,9 +1,22 @@
+import io
+from decimal import Decimal
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
+from PIL import Image
+
 from apps.core.testing import BaseAPITestCase, ariza_yarat
 
 from . import services
-from .models import Ariza, ArizaTarixi, Sharh
+from .models import Ariza, ArizaRasm, ArizaTarixi, Sharh
 
 ARIZALAR = '/api/v1/arizalar/'
+
+
+def rasm_fayli(nomi='kran.jpg', hajm=(40, 30)):
+    buf = io.BytesIO()
+    Image.new('RGB', hajm, (200, 80, 40)).save(buf, format='JPEG')
+    return SimpleUploadedFile(nomi, buf.getvalue(), content_type='image/jpeg')
 
 
 class ArizaYaratishTest(BaseAPITestCase):
@@ -111,11 +124,21 @@ class ArizaHolatlariTest(BaseAPITestCase):
 
     def test_toliq_oqim_va_reyting(self):
         self.kirish(self.usta.user)
-        javob = self.client.post(f'{self.url}/qabul/', {'kelishilgan_narx': '150000'}, format='json')
+        javob = self.client.post(f'{self.url}/narx-taklif/', {'narx': '150000', 'izoh': 'Kran narxi ichida'},
+                                 format='json')
+        self.assertEqual(javob.status_code, 200, javob.data)
+        self.assertEqual(javob.data['status'], 'narx_taklif')
+        self.assertEqual(javob.data['taklif_narx'], '150000.00')
+        self.assertEqual(javob.data['taklif_izoh'], 'Kran narxi ichida')
+        self.assertIsNone(javob.data['kelishilgan_narx'])
+
+        self.kirish(self.mijoz)
+        javob = self.client.post(f'{self.url}/narx-rozi/', {'narx': '150000'}, format='json')
         self.assertEqual(javob.status_code, 200, javob.data)
         self.assertEqual(javob.data['status'], 'qabul')
         self.assertEqual(javob.data['kelishilgan_narx'], '150000.00')
 
+        self.kirish(self.usta.user)
         self.assertEqual(self.client.post(f'{self.url}/bajarildi/').status_code, 200)
 
         self.kirish(self.mijoz)
@@ -126,13 +149,13 @@ class ArizaHolatlariTest(BaseAPITestCase):
         self.assertEqual(javob.data['reyting'], 5.0)
         self.assertEqual(javob.data['sharhlar_soni'], 1)
 
-    def test_begona_usta_qabul_qilolmaydi(self):
+    def test_begona_usta_narx_taklif_qilolmaydi(self):
         self.kirish(self.begona_usta.user)
-        self.assertEqual(self.client.post(f'{self.url}/qabul/').status_code, 404)
+        self.assertEqual(self.client.post(f'{self.url}/narx-taklif/', {'narx': '1000'}, format='json').status_code, 404)
 
-    def test_mijoz_qabul_qilolmaydi(self):
+    def test_mijoz_narx_taklif_qilolmaydi(self):
         self.kirish(self.mijoz)
-        self.assertEqual(self.client.post(f'{self.url}/qabul/').status_code, 403)
+        self.assertEqual(self.client.post(f'{self.url}/narx-taklif/', {'narx': '1000'}, format='json').status_code, 403)
 
     def test_yangi_arizani_bajarildi_qilib_bolmaydi(self):
         self.kirish(self.usta.user)
@@ -148,17 +171,166 @@ class ArizaHolatlariTest(BaseAPITestCase):
         self.kirish(self.usta.user)
         self.assertEqual(self.client.post(f'{ARIZALAR}{boshqa.pk}/bekor/').status_code, 200)
 
-    def test_bekor_qilingan_arizani_qabul_qilib_bolmaydi(self):
+    def test_bekor_qilingan_arizaga_narx_taklif_qilib_bolmaydi(self):
         services.bekor_qilish(self.ariza)
         self.kirish(self.usta.user)
-        javob = self.client.post(f'{self.url}/qabul/')
+        javob = self.client.post(f'{self.url}/narx-taklif/', {'narx': '1000'}, format='json')
         self.assertEqual(javob.status_code, 400)
         self.assertEqual(javob.data['code'], 'notogri_otish')
 
-    def test_manfiy_kelishilgan_narx(self):
+    def test_narx_musbat_va_majburiy(self):
         self.kirish(self.usta.user)
-        javob = self.client.post(f'{self.url}/qabul/', {'kelishilgan_narx': '-100'}, format='json')
+        for malumot in ({}, {'narx': '-100'}, {'narx': '0'}, {'narx': 'abc'}):
+            self.assertEqual(self.client.post(f'{self.url}/narx-taklif/', malumot, format='json').status_code, 400)
+        self.ariza.refresh_from_db()
+        self.assertEqual(self.ariza.status, Ariza.Status.YANGI)
+
+    def test_eski_qabul_yoli_yoq(self):
+        # Usta mijozning roziligisiz ishni o'zi "qabul qilib" qo'ya olmaydi
+        self.kirish(self.usta.user)
+        self.assertEqual(self.client.post(f'{self.url}/qabul/', {'kelishilgan_narx': '1'}, format='json').status_code,
+                         404)
+
+
+class NarxKelishuvTest(BaseAPITestCase):
+    """Usta narx taklif qiladi, mijoz rozi bo'ladi yoki rad etadi."""
+
+    def setUp(self):
+        super().setUp()
+        self.ariza = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
+        self.url = f'{ARIZALAR}{self.ariza.pk}'
+
+    def taklif(self, narx='200000', izoh=''):
+        return services.narx_taklif_qilish(self.ariza, narx=Decimal(narx), izoh=izoh, kim=self.usta.user)
+
+    def test_taklifsiz_rozi_bolib_bolmaydi(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(f'{self.url}/narx-rozi/', {}, format='json')
         self.assertEqual(javob.status_code, 400)
+        self.assertEqual(javob.data['code'], 'taklif_yoq')
+
+    def test_usta_mijoz_orniga_rozi_bololmaydi(self):
+        self.taklif()
+        self.kirish(self.usta.user)
+        self.assertEqual(self.client.post(f'{self.url}/narx-rozi/', {}, format='json').status_code, 403)
+        self.assertEqual(self.client.post(f'{self.url}/narx-rad/', {}, format='json').status_code, 403)
+
+    def test_narx_ozgargan_bolsa_rozilik_rad_etiladi(self):
+        self.taklif('200000')
+        self.taklif('250000')  # usta mijoz javob bermasidan narxni o'zgartirdi
+        self.kirish(self.mijoz)
+        javob = self.client.post(f'{self.url}/narx-rozi/', {'narx': '200000'}, format='json')
+        self.assertEqual(javob.status_code, 400)
+        self.assertEqual(javob.data['code'], 'narx_ozgargan')
+        self.ariza.refresh_from_db()
+        self.assertEqual(self.ariza.status, Ariza.Status.NARX_TAKLIF)
+        self.assertIsNone(self.ariza.kelishilgan_narx)
+
+        javob = self.client.post(f'{self.url}/narx-rozi/', {'narx': '250000'}, format='json')
+        self.assertEqual(javob.status_code, 200, javob.data)
+        self.assertEqual(javob.data['kelishilgan_narx'], '250000.00')
+
+    def test_rad_etilsa_yangi_holatga_qaytadi_va_qayta_taklif_mumkin(self):
+        self.taklif('500000', 'Quvurni ham almashtirish kerak')
+        self.kirish(self.mijoz)
+        javob = self.client.post(f'{self.url}/narx-rad/', {'sabab': 'Juda qimmat'}, format='json')
+        self.assertEqual(javob.status_code, 200, javob.data)
+        self.assertEqual(javob.data['status'], 'yangi')
+        self.assertIsNone(javob.data['taklif_narx'])
+        self.assertEqual(javob.data['taklif_izoh'], '')
+        self.assertEqual(javob.data['tarix'][-1]['izoh'], 'Narx rad etildi. Juda qimmat')
+
+        self.kirish(self.usta.user)
+        javob = self.client.post(f'{self.url}/narx-taklif/', {'narx': '400000'}, format='json')
+        self.assertEqual(javob.status_code, 200, javob.data)
+        self.assertEqual(javob.data['taklif_narx'], '400000.00')
+
+    def test_yangi_arizada_rad_etib_bolmaydi(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(f'{self.url}/narx-rad/', {}, format='json')
+        self.assertEqual(javob.status_code, 400)
+        self.assertEqual(javob.data['code'], 'notogri_otish')
+
+    def test_qabul_qilingandan_keyin_narxni_ozgartirib_bolmaydi(self):
+        self.taklif()
+        services.narxga_rozilik(self.ariza, kim=self.mijoz)
+        self.kirish(self.usta.user)
+        javob = self.client.post(f'{self.url}/narx-taklif/', {'narx': '999999'}, format='json')
+        self.assertEqual(javob.status_code, 400)
+        self.ariza.refresh_from_db()
+        self.assertEqual(self.ariza.kelishilgan_narx, Decimal('200000'))
+
+    def test_taklif_kutilayotganda_mijoz_arizani_tahrirlay_olmaydi(self):
+        self.taklif()
+        self.kirish(self.mijoz)
+        self.assertEqual(self.client.patch(f'{self.url}/', {'tavsif': 'boshqa ish'}, format='json').status_code, 400)
+
+    def test_tarixga_narx_yoziladi(self):
+        self.taklif('150000', 'Ehtiyot qismlar bilan')
+        services.narxga_rozilik(self.ariza, kim=self.mijoz)
+        izohlar = list(ArizaTarixi.objects.filter(ariza=self.ariza).values_list('yangi_status', 'izoh'))
+        self.assertEqual(izohlar, [
+            ('narx_taklif', "Taklif: 150 000 so'm. Ehtiyot qismlar bilan"),
+            ('qabul', "Kelishilgan narx: 150 000 so'm"),
+        ])
+
+
+class ArizaRasmTest(BaseAPITestCase):
+    def malumot(self, **kwargs):
+        return {'usta': self.usta.pk, 'kategoriya': self.santexnik.pk,
+                'tavsif': 'Kran oqyapti', 'manzil': 'Chilonzor', **kwargs}
+
+    def test_rasmlar_bilan_ariza_yuboriladi(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(ARIZALAR, self.malumot(rasmlar=[rasm_fayli('a.jpg'), rasm_fayli('b.JPG')]),
+                                 format='multipart')
+        self.assertEqual(javob.status_code, 201, javob.data)
+        self.assertEqual(len(javob.data['rasmlar']), 2)
+        manzil = javob.data['rasmlar'][0]['rasm']
+        self.assertTrue(manzil.startswith('/media/arizalar/'), manzil)
+        self.assertTrue(manzil.endswith('.jpg'))
+        self.assertNotIn('a.jpg', manzil)  # asl fayl nomi saqlanmaydi
+        self.assertEqual(javob.data['tarix'][0]['izoh'], '2 ta rasm biriktirildi')
+
+        # Usta ham shu rasmlarni ko'radi
+        self.kirish(self.usta.user)
+        self.assertEqual(len(self.client.get(f"{ARIZALAR}{javob.data['id']}/").data['rasmlar']), 2)
+
+    def test_rasmsiz_ham_yuborish_mumkin(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(ARIZALAR, self.malumot(), format='multipart')
+        self.assertEqual(javob.status_code, 201, javob.data)
+        self.assertEqual(javob.data['rasmlar'], [])
+
+    def test_rasm_bolmagan_fayl_rad_etiladi(self):
+        self.kirish(self.mijoz)
+        soxta = SimpleUploadedFile('virus.jpg', b'bu rasm emas', content_type='image/jpeg')
+        javob = self.client.post(ARIZALAR, self.malumot(rasmlar=[soxta]), format='multipart')
+        self.assertEqual(javob.status_code, 400)
+        self.assertIn('rasmlar', javob.data)
+        self.assertFalse(Ariza.objects.exists())
+
+    def test_rasmlar_soni_cheklangan(self):
+        self.kirish(self.mijoz)
+        rasmlar = [rasm_fayli(f'{i}.jpg') for i in range(6)]
+        javob = self.client.post(ARIZALAR, self.malumot(rasmlar=rasmlar), format='multipart')
+        self.assertEqual(javob.status_code, 400)
+        self.assertIn('rasmlar', javob.data)
+
+    @override_settings(ARIZA_RASM_HAJMI_MB=0)
+    def test_katta_rasm_rad_etiladi(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(ARIZALAR, self.malumot(rasmlar=[rasm_fayli()]), format='multipart')
+        self.assertEqual(javob.status_code, 400)
+        self.assertIn('rasmlar', javob.data)
+        self.assertFalse(ArizaRasm.objects.exists())
+
+    def test_rasmni_ochish(self):
+        self.kirish(self.mijoz)
+        javob = self.client.post(ARIZALAR, self.malumot(rasmlar=[rasm_fayli()]), format='multipart')
+        rasm = self.client.get(javob.data['rasmlar'][0]['rasm'])
+        self.assertEqual(rasm.status_code, 200)
+        self.assertEqual(rasm['Content-Type'], 'image/jpeg')
 
 
 class SharhTest(BaseAPITestCase):
@@ -229,8 +401,8 @@ class ArizaFiltrTest(BaseAPITestCase):
     def test_royxat_sorovlar_soni(self):
         for _ in range(10):
             ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)
-        # COUNT + arizalar (bog'lanishlar JOIN orqali) + tarix (prefetch): ariza soniga bog'liq emas
-        with self.assertNumQueries(3):
+        # COUNT + arizalar (bog'lanishlar JOIN orqali) + tarix va rasmlar (prefetch): ariza soniga bog'liq emas
+        with self.assertNumQueries(4):
             self.client.get(ARIZALAR)
 
 
@@ -267,14 +439,18 @@ class ArizaTarixiTest(BaseAPITestCase):
         self.assertIsNone(javob.data['tarix'][0]['eski_status_nomi'])
 
         self.kirish(self.usta.user)
-        self.client.post(f'{ARIZALAR}{pk}/qabul/', {'kelishilgan_narx': '150000'}, format='json')
+        self.client.post(f'{ARIZALAR}{pk}/narx-taklif/', {'narx': '150000'}, format='json')
+        self.kirish(self.mijoz)
+        self.client.post(f'{ARIZALAR}{pk}/narx-rozi/', {}, format='json')
+        self.kirish(self.usta.user)
         javob = self.client.post(f'{ARIZALAR}{pk}/bajarildi/')
 
         tarix = javob.data['tarix']
         self.assertEqual([(t['eski_status'], t['yangi_status']) for t in tarix],
-                         [('', 'yangi'), ('yangi', 'qabul'), ('qabul', 'bajarildi')])
+                         [('', 'yangi'), ('yangi', 'narx_taklif'), ('narx_taklif', 'qabul'), ('qabul', 'bajarildi')])
         self.assertEqual(tarix[1]['kim'], str(self.usta.user))
-        self.assertEqual(tarix[2]['yangi_status_nomi'], 'Bajarildi')
+        self.assertEqual(tarix[2]['kim'], str(self.mijoz))
+        self.assertEqual(tarix[3]['yangi_status_nomi'], 'Bajarildi')
 
     def test_bekor_qilganni_tarix_eslab_qoladi(self):
         ariza = ariza_yarat(mijoz=self.mijoz, usta=self.usta, kategoriya=self.santexnik)

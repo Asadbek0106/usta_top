@@ -13,6 +13,8 @@ export default defineConfig({
       // changeOrigin: false — Django brauzer yuborgan Host'ni (localhost:5173) ko'radi.
       // true bo'lsa Docker ichida Host 'web:8000' bo'lib, ALLOWED_HOSTS uni rad etadi (400 Bad Request)
       '/api': { target: process.env.API_PROXY || 'http://127.0.0.1:8000', changeOrigin: false },
+      // Arizaga yuklangan rasmlar ham backend'da turadi
+      '/media': { target: process.env.API_PROXY || 'http://127.0.0.1:8000', changeOrigin: false },
     },
   },
 })
